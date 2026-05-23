@@ -1,0 +1,22 @@
+{
+  "name": "real-estate-researcher",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "fetch-real-estate-data": "node scripts/fetch_real_estate_data.js",
+    "fetch-geo-data": "node scripts/fetch_geo_data.js"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.21",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "csv-parser": "^3.2.1",
+    "leaflet": "^1.9.4"
+  }
+}

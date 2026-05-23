@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real Estate Researcher</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <h1>Real Estate Map</h1>
+          <button id="theme-toggle" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer; font-size: 1.2rem; padding: 0.2rem;" title="Toggle Theme">
+            🌓
+          </button>
+        </div>
+        
+        <div class="sidebar-section">
+          <h2>Home Metrics</h2>
+          <div class="metric-options">
+            <label class="metric-option active">
+              <input type="radio" name="metric" value="homeValue" checked>
+              <span>Home Value</span>
+            </label>
+            <label class="metric-option">
+              <input type="radio" name="metric" value="homeFiveYearGrowth">
+              <span>Home Value Growth (5-Year)</span>
+            </label>
+            <label class="metric-option">
+              <input type="radio" name="metric" value="homeYoyGrowth">
+              <span>Home Value Growth (YoY)</span>
+            </label>
+            <label class="metric-option">
+              <input type="radio" name="metric" value="homeMomGrowth">
+              <span>Home Value Growth (MoM)</span>
+            </label>
+            <label class="metric-option">
+              <input type="radio" name="metric" value="homeDaysOnMarket">
+              <span>Days on Market</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h2>Investor Metrics</h2>
+          <div class="metric-options">
+            <label class="metric-option">
+              <input type="radio" name="metric" value="rentValue">
+              <span>Monthly Rent</span>
+            </label>
+            <label class="metric-option">
+              <input type="radio" name="metric" value="rentFiveYearGrowth">
+              <span>Rent Growth (5-Year)</span>
+            </label>
+            <label class="metric-option">
+              <input type="radio" name="metric" value="rentYoyGrowth">
+              <span>Rent Growth (YoY)</span>
+            </label>
+            <label class="metric-option">
+              <input type="radio" name="metric" value="rentMomGrowth">
+              <span>Rent Growth (MoM)</span>
+            </label>
+            <label class="metric-option">
+              <input type="radio" name="metric" value="rentDaysOnMarket">
+              <span>Days on Market</span>
+            </label>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Search Bar Overlay -->
+        <div class="search-container">
+          <input type="text" id="location-search" placeholder="Search by city, zip, or state..." autocomplete="off" spellcheck="false" />
+          <ul id="search-results" class="search-results hidden"></ul>
+        </div>
+
+        <!-- Map Container -->
+        <div id="map-container"></div>
+        
+        <!-- Legend Overlay -->
+        <div class="legend-container" id="legend">
+          <div class="legend-title" id="legend-title">Home Value</div>
+          <div class="legend-scale">
+            <div class="legend-gradient"></div>
+            <div class="legend-labels">
+              <span id="legend-min">Low</span>
+              <span id="legend-mid">Avg</span>
+              <span id="legend-max">High</span>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

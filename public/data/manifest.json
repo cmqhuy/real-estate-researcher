@@ -1,0 +1,11 @@
+{
+  "supportedStates": [
+    "TX"
+  ],
+  "metricsVersions": {
+    "TX": "20260523"
+  },
+  "geodataVersions": {
+    "TX": "20260523"
+  }
+}
