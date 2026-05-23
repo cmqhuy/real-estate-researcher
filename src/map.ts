@@ -266,13 +266,22 @@ export class MapManager {
             const p5 = vals[Math.floor(vals.length * 0.05)];
             const p95 = vals[Math.floor(vals.length * 0.95)];
             
-            if (this.activeMetric !== 'homeValue') {
+            const isAbsolute = this.activeMetric === 'homeValue' || this.activeMetric === 'rentValue';
+            const isDOM = this.activeMetric === 'homeDaysOnMarket' || this.activeMetric === 'rentDaysOnMarket';
+            
+            if (isAbsolute) {
+                min = p5;
+                max = p95;
+                if (this.activeMetric === 'rentValue') {
+                    min = 0;
+                }
+            } else if (isDOM) {
+                min = 0;
+                max = p95;
+            } else {
                 const maxAbs = Math.max(Math.abs(p5), Math.abs(p95));
                 min = -maxAbs;
                 max = maxAbs;
-            } else {
-                min = p5;
-                max = p95;
             }
         } else {
             min = 0; max = 1;
