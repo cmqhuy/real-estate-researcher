@@ -355,7 +355,7 @@ export class MapManager {
                 if (this.activeMetric === 'rentFiveYearGrowth') { metricName = 'Rent Growth (5-Year)'; isGrowth = true; }
                 if (this.activeMetric === 'rentMomGrowth') { metricName = 'Rent Growth (MoM)'; isGrowth = true; }
                 if (this.activeMetric === 'homeDaysOnMarket') { metricName = 'Days on Market'; }
-                if (this.activeMetric === 'rentDaysOnMarket') { metricName = 'Days on Market'; }
+                if (this.activeMetric === 'rentDaysOnMarket') { metricName = 'Days on Market (Simulated)'; }
 
                 this.tooltip.show(zip, val, city, state, metricName, isGrowth);
             },
