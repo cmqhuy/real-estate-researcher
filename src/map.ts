@@ -32,6 +32,7 @@ export interface ManifestData {
 
 export class MapManager {
     private map: L.Map;
+    private canvasRenderer: L.Renderer;
     private geoJsonLayer: L.GeoJSON | null = null;
     private loadedStates: Set<string> = new Set();
     private metricsData: MetricsData = { national_avg: 0, data: {} };
@@ -39,6 +40,9 @@ export class MapManager {
     private tooltip: TooltipManager;
     private loadingCount = 0;
     private manifest: ManifestData | null = null;
+
+    // Pre-computed color cache: zip -> fillColor string
+    private colorCache: Map<string, string> = new Map();
     
     // Bounds tracking to dynamically update color scale
     private currentMin = 0;
@@ -52,11 +56,15 @@ export class MapManager {
     constructor(tooltip: TooltipManager, theme: string = 'dark') {
         this.tooltip = tooltip;
         this.currentTheme = theme;
+
+        // Explicit canvas renderer with tolerance for better hit detection perf
+        this.canvasRenderer = L.canvas({ tolerance: 4 });
         
         // Initialize map centered on US
         this.map = L.map('map-container', {
             zoomControl: false,
-            preferCanvas: true
+            preferCanvas: true,
+            renderer: this.canvasRenderer
         }).setView([37.8, -96], 4);
 
         // Add zoom control to top right
@@ -70,12 +78,15 @@ export class MapManager {
         this.tileLayer = L.tileLayer(tileUrl, {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
-            maxZoom: 19
+            maxZoom: 19,
+            updateWhenIdle: false,
+            keepBuffer: 4
         }).addTo(this.map);
         
         this.geoJsonLayer = L.geoJSON(undefined, {
             style: this.getFeatureStyle.bind(this),
-            onEachFeature: this.onEachFeature.bind(this)
+            onEachFeature: this.onEachFeature.bind(this),
+            renderer: this.canvasRenderer
         }).addTo(this.map);
 
         // Load data manifest
@@ -96,28 +107,14 @@ export class MapManager {
             
         this.tileLayer.setUrl(tileUrl);
         
-        // Re-render polygons to adapt to light/dark borders if needed
-        if (this.geoJsonLayer) {
-            this.geoJsonLayer.eachLayer((layer: any) => {
-                if (layer.feature) {
-                    layer.setStyle(this.getFeatureStyle(layer.feature));
-                }
-            });
-        }
+        // Only border color changes with theme — no need to rebuild color cache
+        this.applyColorCache();
     }
 
     setMetric(metric: MetricType) {
         this.activeMetric = metric;
-        this.updateScaleBounds();
-        
-        if (this.geoJsonLayer) {
-            // Re-style all polygons with new metric
-            this.geoJsonLayer.eachLayer((layer: any) => {
-                if (layer.feature) {
-                    layer.setStyle(this.getFeatureStyle(layer.feature));
-                }
-            });
-        }
+        this.updateScaleBounds(); // also rebuilds colorCache
+        this.applyColorCache();
     }
 
     flyTo(lat: number, lon: number, zoom: number) {
@@ -301,27 +298,58 @@ export class MapManager {
         if (this.onScaleUpdateCallback) {
             this.onScaleUpdateCallback(min, max, mid);
         }
+
+        // Pre-compute colors for all loaded ZIPs now that scale is known
+        this.rebuildColorCache();
+    }
+
+    /** Pre-compute fillColor for every ZIP so getFeatureStyle is a fast lookup. */
+    private rebuildColorCache() {
+        this.colorCache.clear();
+        for (const zip in this.metricsData.data) {
+            const val = this.metricsData.data[zip][this.activeMetric] ?? null;
+            this.colorCache.set(zip, getColor(val, this.currentMin, this.currentMax, this.activeMetric, this.currentMid));
+        }
+    }
+
+    /** Apply the pre-computed cache to all GeoJSON layers in a single rAF batch. */
+    private applyColorCache() {
+        if (!this.geoJsonLayer) return;
+        const borderColor = this.currentTheme === 'light' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)';
+        requestAnimationFrame(() => {
+            this.geoJsonLayer!.eachLayer((layer: any) => {
+                if (!layer.feature) return;
+                const zip = layer.feature.properties.ZCTA5CE10 || layer.feature.properties.ZCTA5CE20;
+                const fillColor = this.colorCache.get(zip) ?? 'rgba(0,0,0,0)';
+                const hasData = this.metricsData.data[zip]?.[this.activeMetric] != null;
+                layer.setStyle({
+                    fillColor,
+                    color: borderColor,
+                    weight: 0.8,
+                    opacity: 0.8,
+                    fillOpacity: hasData ? 0.6 : 0
+                });
+            });
+        });
     }
 
     private getFeatureStyle(feature: any): L.PathOptions {
         const zip = feature.properties.ZCTA5CE10 || feature.properties.ZCTA5CE20;
-        let value: number | null = null;
-        
-        if (this.metricsData.data[zip]) {
-            value = this.metricsData.data[zip][this.activeMetric] ?? null;
-        }
-
-        const color = getColor(value, this.currentMin, this.currentMax, this.activeMetric, this.currentMid);
-        
-        // Light theme borders should be dark, dark theme borders should be light for contrast
-        const borderColor = this.currentTheme === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)';
+        // Use cache if available; fall back to computing on the fly (e.g. initial render)
+        const fillColor = this.colorCache.get(zip)
+            ?? getColor(
+                this.metricsData.data[zip]?.[this.activeMetric] ?? null,
+                this.currentMin, this.currentMax, this.activeMetric, this.currentMid
+            );
+        const hasData = this.metricsData.data[zip]?.[this.activeMetric] != null;
+        const borderColor = this.currentTheme === 'light' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)';
 
         return {
-            fillColor: color,
-            weight: 1,
-            opacity: 0.2,
+            fillColor,
+            weight: 0.8,
+            opacity: 0.8,
             color: borderColor,
-            fillOpacity: value === null ? 0 : 0.35
+            fillOpacity: hasData ? 0.6 : 0
         };
     }
 
