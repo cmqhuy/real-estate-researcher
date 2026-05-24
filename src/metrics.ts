@@ -16,7 +16,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     homeValue: {
         key: 'homeValue',
         title: 'Home Value',
-        description: 'Typical home value (ZHVI) - smoothed, seasonally adjusted index.',
+        description: 'Typical home value - smoothed, seasonally adjusted index.',
         icon: '🏠',
         category: 'home',
         scaleType: 'diverging',
@@ -82,7 +82,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     rentValue: {
         key: 'rentValue',
         title: 'Monthly Rent',
-        description: 'Typical monthly rent index (ZORI) - smoothed.',
+        description: 'Typical monthly rent index - smoothed.',
         icon: '💵',
         category: 'investor',
         scaleType: 'diverging',

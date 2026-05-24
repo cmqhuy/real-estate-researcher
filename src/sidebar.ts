@@ -1,6 +1,17 @@
 import type { MetricType, GeographicLevel } from './colors';
 import { METRIC_DEFINITIONS, isMetricSupportedAtLevel } from './metrics';
 
+let sidebarTooltip: HTMLDivElement | null = null;
+
+function getSidebarTooltip(): HTMLDivElement {
+    if (!sidebarTooltip) {
+        sidebarTooltip = document.createElement('div');
+        sidebarTooltip.className = 'sidebar-tooltip';
+        document.body.appendChild(sidebarTooltip);
+    }
+    return sidebarTooltip;
+}
+
 export class SidebarManager {
     private activeMetric: MetricType = 'homeValue';
     private onMetricChangeCallback: ((metric: MetricType) => void) | null = null;
@@ -31,7 +42,6 @@ export class SidebarManager {
 
             const label = document.createElement('label');
             label.className = `metric-option${metricKey === this.activeMetric ? ' active' : ''}`;
-            label.title = def.description;
             
             const input = document.createElement('input');
             input.type = 'radio';
@@ -44,8 +54,34 @@ export class SidebarManager {
             const span = document.createElement('span');
             span.textContent = ` ${def.icon} ${def.title}`;
 
+            const infoBtn = document.createElement('span');
+            infoBtn.className = 'metric-info-btn';
+            infoBtn.textContent = 'ⓘ';
+            
+            // Prevent clicking on the info icon from selecting the metric
+            infoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+            });
+
+            infoBtn.addEventListener('mouseenter', () => {
+                const tooltipEl = getSidebarTooltip();
+                tooltipEl.textContent = def.description;
+                tooltipEl.classList.add('visible');
+                
+                const rect = infoBtn.getBoundingClientRect();
+                tooltipEl.style.left = `${rect.left + window.scrollX + (rect.width / 2)}px`;
+                tooltipEl.style.top = `${rect.top + window.scrollY - 6}px`;
+            });
+
+            infoBtn.addEventListener('mouseleave', () => {
+                const tooltipEl = getSidebarTooltip();
+                tooltipEl.classList.remove('visible');
+            });
+
             label.appendChild(input);
             label.appendChild(span);
+            label.appendChild(infoBtn);
             container.appendChild(label);
 
             this.optionsMap.set(metricKey, label);
