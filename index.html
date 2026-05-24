@@ -26,104 +26,17 @@
         
         <div class="sidebar-section">
           <h2>Home Metrics</h2>
-          <div class="metric-options">
-            <label class="metric-option active">
-              <input type="radio" name="metric" value="homeValue" checked>
-              <span>🏠 Home Value</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="homeFiveYearGrowth">
-              <span>📈 Home Value Growth (5-Year)</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="homeYoyGrowth">
-              <span>📅 Home Value Growth (YoY)</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="homeMomGrowth">
-              <span>📆 Home Value Growth (MoM)</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="homeValueForecast">
-              <span>🔮 1-Yr Value Forecast</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="homeDaysOnMarket">
-              <span>⏱️ Days on Market</span>
-            </label>
-          </div>
+          <div id="home-metrics-container" class="metric-options"></div>
         </div>
 
         <div class="sidebar-section">
           <h2>Market Metrics</h2>
-          <div class="metric-options">
-            <label class="metric-option">
-              <input type="radio" name="metric" value="activeInventory">
-              <span>📦 Active Inventory</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="newListings">
-              <span>🆕 New Listings</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="priceCutShare">
-              <span>✂️ Share with Price Cuts</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="priceCutSize">
-              <span>📉 Median Price Cut Size</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="salesCount">
-              <span>📊 Sales Count</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="medianSalePrice">
-              <span>💵 Median Sale Price</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="saleToListRatio">
-              <span>⚖️ Sale-to-List Ratio</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="pctSalesAboveList">
-              <span>🔺 Sales Above List</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="pctSalesBelowList">
-              <span>🔻 Sales Below List</span>
-            </label>
-          </div>
+          <div id="market-metrics-container" class="metric-options"></div>
         </div>
 
         <div class="sidebar-section">
           <h2>Investor Metrics</h2>
-          <div class="metric-options">
-            <label class="metric-option">
-              <input type="radio" name="metric" value="rentValue">
-              <span>💵 Monthly Rent</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="rentFiveYearGrowth">
-              <span>📊 Rent Growth (5-Year)</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="rentYoyGrowth">
-              <span>📅 Rent Growth (YoY)</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="rentMomGrowth">
-              <span>📆 Rent Growth (MoM)</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="rentPerSqft">
-              <span>📐 Rent per Square Foot</span>
-            </label>
-            <label class="metric-option">
-              <input type="radio" name="metric" value="rentDaysOnMarket">
-              <span>⏱️ Days on Market (Simulated)</span>
-            </label>
-          </div>
+          <div id="investor-metrics-container" class="metric-options"></div>
         </div>
       </aside>
 

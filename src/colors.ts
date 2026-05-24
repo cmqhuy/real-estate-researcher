@@ -1,6 +1,8 @@
 // Color scale utilities
+import { METRIC_DEFINITIONS } from './metrics';
+
 export type MetricType = 'homeValue' | 'homeYoyGrowth' | 'homeFiveYearGrowth' | 'homeMomGrowth' 
-    | 'rentValue' | 'rentYoyGrowth' | 'rentFiveYearGrowth' | 'rentMomGrowth' | 'homeDaysOnMarket' | 'rentDaysOnMarket'
+    | 'rentValue' | 'rentYoyGrowth' | 'rentFiveYearGrowth' | 'rentMomGrowth' | 'homeDaysOnMarket'
     | 'homeValueForecast' | 'activeInventory' | 'newListings' | 'priceCutShare' | 'priceCutSize' 
     | 'salesCount' | 'medianSalePrice' | 'saleToListRatio' | 'pctSalesAboveList' | 'pctSalesBelowList' | 'rentPerSqft';
 
@@ -24,8 +26,8 @@ function interpolateColor(color1: [number, number, number], color2: [number, num
 export function getColor(value: number | null, min: number, max: number, metric: MetricType, mid: number): string {
     if (value === null || value === undefined) return 'rgba(0,0,0,0)'; // Transparent if no data
     
-    const isSequential = metric === 'homeDaysOnMarket' || metric === 'rentDaysOnMarket' ||
-                         metric === 'activeInventory' || metric === 'newListings' || metric === 'salesCount';
+    const def = METRIC_DEFINITIONS[metric];
+    const isSequential = def ? def.scaleType === 'sequential' : false;
     
     if (isSequential) {
         // 0 to max sequential scale (White -> Red)

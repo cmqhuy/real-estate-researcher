@@ -319,7 +319,7 @@ async function run() {
             // Calculate Home Value Average
             const homeAvg = sr.validCount > 0 ? sr.totalHomeValue / sr.validCount : 350000;
             
-            // Calculate Rent Average and Generate Rent Days on Market across all levels
+            // Calculate Rent Average
             let totalRent = 0;
             let rentCount = 0;
 
@@ -334,32 +334,73 @@ async function run() {
                         // Rent per square foot = rentValue / (1200 + random variation) rounded to 2 decimals
                         regData.rentPerSqft = Math.round((regData.rentValue / (1200 + Math.random() * 400 - 200)) * 100) / 100;
                     }
-
-                    // Generate rentDaysOnMarket based on sale homeDaysOnMarket (clamped between 5 and 30 days)
-                    if (regData.homeDaysOnMarket) {
-                        regData.rentDaysOnMarket = Math.max(5, Math.min(30, Math.round(regData.homeDaysOnMarket * 0.35 + (Math.random() * 4 - 2))));
-                    } else {
-                        regData.rentDaysOnMarket = Math.max(5, Math.min(30, Math.round(12 + Math.random() * 8)));
-                    }
                 }
             }
 
             const rentAvg = rentCount > 0 ? totalRent / rentCount : 2000;
             
-            const output = {
-                national_avg: homeAvg,
-                rent_avg: rentAvg,
-                levels: sr.levels
-            };
+            // 1. Separate Names and Metrics
+            // Create directories if they do not exist
+            const regionsDir = path.join(dataDir, 'regions');
+            const metricsOutputDir = path.join(dataDir, 'metrics');
+            if (!fs.existsSync(regionsDir)) fs.mkdirSync(regionsDir, { recursive: true });
+            if (!fs.existsSync(metricsOutputDir)) fs.mkdirSync(metricsOutputDir, { recursive: true });
 
-            const filename = `${state.toLowerCase()}_metrics_${yyyymmdd}.json`;
-            fs.writeFileSync(path.join(dataDir, filename), JSON.stringify(output));
+            for (const level in sr.levels) {
+                const regions = sr.levels[level];
+                const regionIds = Object.keys(regions);
+                if (regionIds.length === 0) continue;
+
+                // Create static names dictionary
+                const namesDict = {};
+                
+                // Initialize metric value dictionaries
+                const metricKeys = new Set();
+                for (const id of regionIds) {
+                    const regData = regions[id];
+                    namesDict[id] = {
+                        name: regData.name,
+                        state: regData.state
+                    };
+                    for (const prop in regData) {
+                        if (prop !== 'name' && prop !== 'state') {
+                            metricKeys.add(prop);
+                        }
+                    }
+                }
+
+                // Write static names file
+                const namesFilename = `${state.toLowerCase()}_${level}_names_${yyyymmdd}.json`;
+                fs.writeFileSync(path.join(regionsDir, namesFilename), JSON.stringify(namesDict));
+
+                // Write individual metric files
+                for (const metric of metricKeys) {
+                    const metricDict = {};
+                    let hasAnyValue = false;
+                    for (const id of regionIds) {
+                        const val = regions[id][metric];
+                        if (val !== undefined && val !== null) {
+                            metricDict[id] = val;
+                            hasAnyValue = true;
+                        }
+                    }
+                    if (hasAnyValue) {
+                        const metricFilename = `${state.toLowerCase()}_${level}_${metric}_${yyyymmdd}.json`;
+                        fs.writeFileSync(path.join(metricsOutputDir, metricFilename), JSON.stringify(metricDict));
+                    }
+                }
+            }
+
+            if (!manifest.averages) {
+                manifest.averages = {};
+            }
+            manifest.averages[state] = {
+                homeValue: homeAvg,
+                rentValue: rentAvg
+            };
             
             manifest.metricsVersions[state] = yyyymmdd;
-            console.log(`Saved ${filename} with levels:`);
-            for (const lvl in sr.levels) {
-                console.log(`  - ${lvl}: ${Object.keys(sr.levels[lvl]).length} regions`);
-            }
+            console.log(`Saved split metrics for ${state} with version: ${yyyymmdd}`);
         }
 
         fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2));

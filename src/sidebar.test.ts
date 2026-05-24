@@ -4,14 +4,9 @@ import { SidebarManager } from './sidebar';
 describe('SidebarManager', () => {
     beforeEach(() => {
         document.body.innerHTML = `
-            <div class="metric-option active">
-                <input type="radio" name="metric" value="homeValue" checked>
-                <span>Home Value</span>
-            </div>
-            <div class="metric-option">
-                <input type="radio" name="metric" value="homeYoyGrowth">
-                <span>YoY Growth</span>
-            </div>
+            <div id="home-metrics-container"></div>
+            <div id="market-metrics-container"></div>
+            <div id="investor-metrics-container"></div>
         `;
     });
 
@@ -26,15 +21,37 @@ describe('SidebarManager', () => {
         sidebar.onMetricChange(callback);
 
         const options = document.querySelectorAll('.metric-option');
-        const secondOption = options[1] as HTMLElement;
+        // Let's find the homeYoyGrowth option
+        const secondOption = Array.from(options).find(opt => {
+            const input = opt.querySelector('input');
+            return input?.value === 'homeYoyGrowth';
+        }) as HTMLElement;
+
+        expect(secondOption).toBeDefined();
 
         // Click the second option
         secondOption.click();
 
         expect(secondOption.classList.contains('active')).toBe(true);
-        expect(options[0].classList.contains('active')).toBe(false);
         expect(sidebar.getActiveMetric()).toBe('homeYoyGrowth');
         expect(callback).toHaveBeenCalledWith('homeYoyGrowth');
         expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it('should disable unsupported metrics on level change and fallback if necessary', () => {
+        const sidebar = new SidebarManager();
+        // Since default active is homeValue (supported on all levels), we can select 'medianSalePrice' (supported on metro only)
+        sidebar.selectMetric('medianSalePrice');
+        expect(sidebar.getActiveMetric()).toBe('medianSalePrice');
+
+        // Now change geographic level to 'zip' (which doesn't support medianSalePrice)
+        sidebar.updateLevelSelectorConstraints('zip');
+
+        // It should have disabled the option and fallen back to 'homeValue'
+        expect(sidebar.getActiveMetric()).toBe('homeValue');
+
+        const medianSalePriceOption = document.querySelector('input[value="medianSalePrice"]')?.parentElement;
+        expect(medianSalePriceOption?.classList.contains('disabled')).toBe(true);
+        expect(document.querySelector('input[value="medianSalePrice"]')).toHaveProperty('disabled', true);
     });
 });

@@ -17,6 +17,9 @@ const mapManager = new MapManager(tooltip, currentTheme);
 const sidebar = new SidebarManager();
 const search = new SearchManager();
 
+// Set initial level constraints on sidebar
+sidebar.updateLevelSelectorConstraints('zip');
+
 // Wire Theme Toggle
 themeToggle?.addEventListener('click', () => {
     currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -59,6 +62,7 @@ levelButtons.forEach(btn => {
         if (level) {
             levelButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            sidebar.updateLevelSelectorConstraints(level);
             mapManager.setLevel(level);
         }
     });

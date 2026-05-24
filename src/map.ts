@@ -2,6 +2,7 @@ import * as L from 'leaflet';
 import { getColor } from './colors';
 import type { MetricType, GeographicLevel } from './colors';
 import { TooltipManager } from './tooltip';
+import { METRIC_DEFINITIONS, getMetricMidpoint, isMetricSupportedAtLevel } from './metrics';
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -15,7 +16,6 @@ export interface RegionMetrics {
     rentFiveYearGrowth?: number;
     rentMomGrowth?: number;
     homeDaysOnMarket?: number;
-    rentDaysOnMarket?: number;
     homeValueForecast?: number;
     activeInventory?: number;
     newListings?: number;
@@ -31,22 +31,11 @@ export interface RegionMetrics {
     state: string;
 }
 
-export interface MetricsData {
-    national_avg: number;
-    rent_avg?: number;
-    levels: {
-        zip: Record<string, RegionMetrics>;
-        county: Record<string, RegionMetrics>;
-        metro: Record<string, RegionMetrics>;
-        state: Record<string, RegionMetrics>;
-        country: Record<string, RegionMetrics>;
-    };
-}
-
 export interface ManifestData {
     supportedStates: string[];
     metricsVersions: Record<string, string>;
     geodataVersions: Record<string, string>;
+    averages?: Record<string, { homeValue: number; rentValue: number }>;
 }
 
 export class MapManager {
@@ -54,7 +43,6 @@ export class MapManager {
     private canvasRenderer: L.Renderer;
     private geoJsonLayer: L.GeoJSON | null = null;
     private loadedStates: Set<string> = new Set();
-    private metricsData: MetricsData = { national_avg: 0, levels: { zip: {}, county: {}, metro: {}, state: {}, country: {} } };
     private activeMetric: MetricType = 'homeValue';
     private activeLevel: GeographicLevel = 'zip';
     private tooltip: TooltipManager;
@@ -64,7 +52,10 @@ export class MapManager {
     // Cache of loaded level geodata: state_level -> GeoJSON object
     private geodataCache: Map<string, any> = new Map();
     private activeState = 'TX';
-    private metricsDataCache: Map<string, MetricsData> = new Map();
+
+    // Split Metrics Caches
+    private regionsCache: Map<string, Record<string, { name: string; state: string }>> = new Map();
+    private metricsCache: Map<string, Record<string, number>> = new Map();
 
     // Pre-computed color cache: regionKey -> fillColor string
     private colorCache: Map<string, string> = new Map();
@@ -171,10 +162,20 @@ export class MapManager {
         this.applyColorCache();
     }
 
-    setMetric(metric: MetricType) {
+    async setMetric(metric: MetricType) {
+        if (this.activeMetric === metric) return;
         this.activeMetric = metric;
-        this.updateScaleBounds(); // also rebuilds colorCache
-        this.applyColorCache();
+        
+        this.setLoading(true);
+        try {
+            await this.ensureDataLoaded(this.activeState, this.activeLevel, metric);
+            this.updateScaleBounds();
+            this.applyColorCache();
+        } catch (error) {
+            console.error(`Error switching to metric ${metric}:`, error);
+        } finally {
+            this.setLoading(false);
+        }
     }
 
     async setLevel(level: GeographicLevel) {
@@ -191,15 +192,26 @@ export class MapManager {
             // Check cache first
             const cacheKey = `${this.activeState}_${level}`;
             let geodata = this.geodataCache.get(cacheKey);
+            
+            const promises: Promise<any>[] = [];
             if (!geodata && this.manifest) {
                 const stateCode = this.activeState;
                 const geodataVersion = this.manifest.geodataVersions[stateCode];
                 const filename = `${stateCode.toLowerCase()}_${level}_geodata_${geodataVersion}.json`;
-                const res = await fetch(`${BASE_URL}data/geodata/${filename}`);
-                if (!res.ok) throw new Error(`Failed to load ${level} geodata`);
-                geodata = await res.json();
-                this.geodataCache.set(cacheKey, geodata);
+                const p = fetch(`${BASE_URL}data/geodata/${filename}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error(`Failed to load ${level} geodata`);
+                        return res.json();
+                    })
+                    .then(data => {
+                        geodata = data;
+                        this.geodataCache.set(cacheKey, geodata);
+                    });
+                promises.push(p);
             }
+            
+            promises.push(this.ensureDataLoaded(this.activeState, level, this.activeMetric));
+            await Promise.all(promises);
 
             if (geodata && this.geoJsonLayer) {
                 this.geoJsonLayer.addData(geodata);
@@ -231,18 +243,8 @@ export class MapManager {
 
         this.setLoading(true);
         try {
-            // Start flying to the new state immediately and get the promise!
+            // Start flying to the new state immediately
             const flight = this.flyTo(stateCode === 'WA' ? 47.4009 : 31.9686, stateCode === 'WA' ? -121.4905 : -99.9018, stateCode === 'WA' ? 7 : 6);
-
-            // Load metrics for the new state in parallel (use cache if available)
-            let metricsData = this.metricsDataCache.get(stateCode);
-            let metricsPromise: Promise<Response> | null = null;
-            if (!metricsData && this.manifest) {
-                const metricsVersion = this.manifest.metricsVersions[stateCode];
-                if (!metricsVersion) throw new Error(`Missing metrics version for state ${stateCode}`);
-                const metricsFilename = `${stateCode.toLowerCase()}_metrics_${metricsVersion}.json`;
-                metricsPromise = fetch(`${BASE_URL}data/${metricsFilename}`);
-            }
 
             // Load geodata for the active level in parallel (use cache if available)
             const cacheKey = `${stateCode}_${this.activeLevel}`;
@@ -255,34 +257,17 @@ export class MapManager {
                 geodataPromise = fetch(`${BASE_URL}data/geodata/${geodataFilename}`);
             }
 
-            // Await both fetches (they run asynchronously without blocking the flight)
-            const [metricsRes, geodataRes] = await Promise.all([
-                metricsPromise,
-                geodataPromise
+            // Ensure names/metrics are loaded in parallel
+            const dataPromise = this.ensureDataLoaded(stateCode, this.activeLevel, this.activeMetric);
+
+            // Await fetches
+            const [geodataRes] = await Promise.all([
+                geodataPromise,
+                dataPromise
             ]);
 
-            // Wait until flight panning finishes before running CPU-heavy parsing and rendering
+            // Wait until flight panning finishes
             await flight;
-
-            if (metricsRes) {
-                if (!metricsRes.ok) throw new Error(`Failed to load metrics for ${stateCode}`);
-                const rawData = await metricsRes.json();
-                if (!rawData.levels) {
-                    rawData.levels = {
-                        zip: rawData.data || {},
-                        county: {},
-                        metro: {},
-                        state: {},
-                        country: {}
-                    };
-                }
-                metricsData = rawData as MetricsData;
-                this.metricsDataCache.set(stateCode, metricsData);
-            }
-
-            if (metricsData) {
-                this.metricsData = metricsData;
-            }
 
             if (geodataRes) {
                 if (!geodataRes.ok) throw new Error(`Failed to load ${this.activeLevel} geodata for ${stateCode}`);
@@ -416,22 +401,19 @@ export class MapManager {
         
         this.setLoading(true);
         try {
-            const metricsVersion = this.manifest.metricsVersions[stateCode];
             const geodataVersion = this.manifest.geodataVersions[stateCode];
 
-            if (!metricsVersion || !geodataVersion) {
+            if (!geodataVersion) {
                 throw new Error(`Missing versioning info for state ${stateCode} in manifest.`);
             }
 
-            const metricsFilename = `${stateCode.toLowerCase()}_metrics_${metricsVersion}.json`;
             const geodataFilename = `${stateCode.toLowerCase()}_${this.activeLevel}_geodata_${geodataVersion}.json`;
 
-            const [metricsRes, geodataRes] = await Promise.all([
-                fetch(`${BASE_URL}data/${metricsFilename}`),
-                fetch(`${BASE_URL}data/geodata/${geodataFilename}`)
+            const [geodataRes] = await Promise.all([
+                fetch(`${BASE_URL}data/geodata/${geodataFilename}`),
+                this.ensureDataLoaded(stateCode, this.activeLevel, this.activeMetric)
             ]);
 
-            if (!metricsRes.ok) throw new Error(`Failed to load metrics for ${stateCode}`);
             if (!geodataRes.ok) throw new Error(`Failed to load ${this.activeLevel} geodata for ${stateCode}`);
 
             // Wait for map to stop moving (panning/zooming during initialization flight)
@@ -439,20 +421,8 @@ export class MapManager {
                 await flightPromise;
             }
 
-            const metricsData = await metricsRes.json();
-            if (!metricsData.levels) {
-                metricsData.levels = {
-                    zip: metricsData.data || {},
-                    county: {},
-                    metro: {},
-                    state: {},
-                    country: {}
-                };
-            }
             const geodata = await geodataRes.json();
 
-            this.metricsData = metricsData;
-            this.metricsDataCache.set(stateCode, metricsData);
             this.geodataCache.set(`${stateCode}_${this.activeLevel}`, geodata);
             this.loadedStates.add(stateCode);
 
@@ -498,18 +468,67 @@ export class MapManager {
         return '';
     }
 
+    private async ensureDataLoaded(stateCode: string, level: GeographicLevel, metric: MetricType): Promise<void> {
+        if (!this.manifest) return;
+
+        const version = this.manifest.metricsVersions[stateCode];
+        if (!version) throw new Error(`Missing metrics version for state ${stateCode}`);
+
+        const regionsKey = `${stateCode}_${level}`;
+        const metricsKey = `${stateCode}_${level}_${metric}`;
+
+        const promises: Promise<any>[] = [];
+
+        // 1. Fetch names if not cached
+        if (!this.regionsCache.has(regionsKey)) {
+            const namesFilename = `${stateCode.toLowerCase()}_${level}_names_${version}.json`;
+            const p = fetch(`${BASE_URL}data/regions/${namesFilename}`)
+                .then(res => {
+                    if (!res.ok) throw new Error(`Failed to load regions names for ${regionsKey}`);
+                    return res.json();
+                })
+                .then(data => {
+                    this.regionsCache.set(regionsKey, data);
+                });
+            promises.push(p);
+        }
+
+        // 2. Fetch metric values if not cached
+        const isSupported = isMetricSupportedAtLevel(metric, level);
+        if (isSupported && !this.metricsCache.has(metricsKey)) {
+            const metricFilename = `${stateCode.toLowerCase()}_${level}_${metric}_${version}.json`;
+            const p = fetch(`${BASE_URL}data/metrics/${metricFilename}`)
+                .then(res => {
+                    if (!res.ok) throw new Error(`Failed to load metric ${metric} at ${level} for ${stateCode}`);
+                    return res.json();
+                })
+                .then(data => {
+                    this.metricsCache.set(metricsKey, data);
+                });
+            promises.push(p);
+        }
+
+        if (promises.length > 0) {
+            await Promise.all(promises);
+        }
+    }
+
     private updateScaleBounds() {
-        const levelData = this.metricsData.levels[this.activeLevel] || {};
-        if (Object.keys(levelData).length === 0) return;
+        const metricsKey = `${this.activeState}_${this.activeLevel}_${this.activeMetric}`;
+
+        const isSupported = isMetricSupportedAtLevel(this.activeMetric, this.activeLevel);
+        const levelData = isSupported ? (this.metricsCache.get(metricsKey) || {}) : {};
 
         let min = Infinity;
         let max = -Infinity;
 
         const vals: number[] = [];
-        for (const key in levelData) {
-            const val = levelData[key][this.activeMetric];
-            if (val !== null && val !== undefined) {
-                vals.push(val);
+        if (isSupported) {
+            for (const key in levelData) {
+                const val = levelData[key];
+                if (val !== null && val !== undefined && !isNaN(val)) {
+                    vals.push(val);
+                }
             }
         }
 
@@ -518,17 +537,14 @@ export class MapManager {
             let p5 = vals[Math.floor(vals.length * 0.05)];
             let p95 = vals[Math.floor(vals.length * 0.95)];
             
-            // If they are equal (e.g. only 1 data point), create a synthetic range
             if (p5 === p95) {
                 p5 = p5 * 0.8;
                 p95 = p95 * 1.2;
             }
 
-            const isAbsolute = this.activeMetric === 'homeValue' || this.activeMetric === 'rentValue' || 
-                               this.activeMetric === 'medianSalePrice' || this.activeMetric === 'rentPerSqft';
-            const isSequential = this.activeMetric === 'homeDaysOnMarket' || this.activeMetric === 'rentDaysOnMarket' ||
-                                 this.activeMetric === 'activeInventory' || this.activeMetric === 'newListings' || 
-                                 this.activeMetric === 'salesCount';
+            const def = METRIC_DEFINITIONS[this.activeMetric];
+            const isAbsolute = def ? (def.format === 'currency' || def.format === 'currency-cents') : false;
+            const isSequential = def ? def.scaleType === 'sequential' : false;
             
             if (isAbsolute) {
                 min = p5;
@@ -540,7 +556,6 @@ export class MapManager {
                 min = 0;
                 max = p95;
             } else {
-                // Growth and percentages (homeValueForecast, saleToListRatio, etc.)
                 let center = 0.0;
                 if (this.activeMetric === 'saleToListRatio') {
                     center = 1.0;
@@ -562,18 +577,9 @@ export class MapManager {
         this.currentMax = max;
 
         let mid = 0;
-        if (this.activeMetric === 'homeValue' || this.activeMetric === 'medianSalePrice') {
-            mid = this.metricsData.national_avg;
-        } else if (this.activeMetric === 'rentValue') {
-            mid = this.metricsData.rent_avg || 2000;
-        } else if (this.activeMetric === 'rentPerSqft') {
-            mid = (this.metricsData.rent_avg || 2000) / 1200;
-        } else if (this.activeMetric === 'saleToListRatio') {
-            mid = 1.0;
-        } else if (this.activeMetric === 'homeValueForecast' || this.activeMetric.endsWith('Growth')) {
-            mid = 0.0;
-        } else {
-            mid = vals.length > 0 ? vals.reduce((sum, v) => sum + v, 0) / vals.length : 0.5;
+        if (this.manifest && this.manifest.averages && this.manifest.averages[this.activeState]) {
+            const stateAverages = this.manifest.averages[this.activeState];
+            mid = getMetricMidpoint(this.activeMetric, stateAverages.homeValue, stateAverages.rentValue, vals);
         }
         this.currentMid = mid;
 
@@ -586,9 +592,10 @@ export class MapManager {
 
     private rebuildColorCache() {
         this.colorCache.clear();
-        const levelData = this.metricsData.levels[this.activeLevel] || {};
+        const metricsKey = `${this.activeState}_${this.activeLevel}_${this.activeMetric}`;
+        const levelData = this.metricsCache.get(metricsKey) || {};
         for (const key in levelData) {
-            const val = levelData[key][this.activeMetric] ?? null;
+            const val = levelData[key] ?? null;
             this.colorCache.set(key, getColor(val, this.currentMin, this.currentMax, this.activeMetric, this.currentMid));
         }
     }
@@ -596,13 +603,17 @@ export class MapManager {
     private applyColorCache() {
         if (!this.geoJsonLayer) return;
         const borderColor = this.currentTheme === 'light' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)';
+        const metricsKey = `${this.activeState}_${this.activeLevel}_${this.activeMetric}`;
+        const levelData = this.metricsCache.get(metricsKey) || {};
+        const isSupported = isMetricSupportedAtLevel(this.activeMetric, this.activeLevel);
+
         requestAnimationFrame(() => {
             this.geoJsonLayer!.eachLayer((layer: any) => {
                 if (!layer.feature) return;
                 const key = this.getFeatureKey(layer.feature, this.activeLevel);
-                const fillColor = this.colorCache.get(key) ?? 'rgba(0,0,0,0)';
-                const val = this.metricsData.levels[this.activeLevel]?.[key]?.[this.activeMetric] ?? null;
+                const val = isSupported ? (levelData[key] ?? null) : null;
                 const hasData = val !== null;
+                const fillColor = hasData ? (this.colorCache.get(key) ?? 'rgba(0,0,0,0)') : 'rgba(0,0,0,0)';
                 layer.setStyle({
                     fillColor,
                     color: borderColor,
@@ -616,10 +627,12 @@ export class MapManager {
 
     private getFeatureStyle(feature: any): L.PathOptions {
         const key = this.getFeatureKey(feature, this.activeLevel);
-        const val = this.metricsData.levels[this.activeLevel]?.[key]?.[this.activeMetric] ?? null;
-        const fillColor = this.colorCache.get(key)
-            ?? getColor(val, this.currentMin, this.currentMax, this.activeMetric, this.currentMid);
+        const metricsKey = `${this.activeState}_${this.activeLevel}_${this.activeMetric}`;
+        const levelData = this.metricsCache.get(metricsKey) || {};
+        const isSupported = isMetricSupportedAtLevel(this.activeMetric, this.activeLevel);
+        const val = isSupported ? (levelData[key] ?? null) : null;
         const hasData = val !== null;
+        const fillColor = hasData ? (this.colorCache.get(key) ?? getColor(val, this.currentMin, this.currentMax, this.activeMetric, this.currentMid)) : 'rgba(0,0,0,0)';
         const borderColor = this.currentTheme === 'light' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)';
 
         return {
@@ -643,14 +656,23 @@ export class MapManager {
                 let regionName = 'Unknown Region';
                 let state = '';
                 
-                const levelData = this.metricsData.levels[this.activeLevel];
-                if (levelData && levelData[key]) {
-                    const d = levelData[key];
-                    val = d[this.activeMetric] ?? null;
-                    regionName = d.name;
-                    state = d.state || '';
+                const regionsKey = `${this.activeState}_${this.activeLevel}`;
+                const metricsKey = `${this.activeState}_${this.activeLevel}_${this.activeMetric}`;
+                
+                const namesData = this.regionsCache.get(regionsKey);
+                if (namesData && namesData[key]) {
+                    regionName = namesData[key].name;
+                    state = namesData[key].state || '';
                 } else {
                     regionName = feature.properties.NAME || feature.properties.name || key;
+                }
+
+                const isSupported = isMetricSupportedAtLevel(this.activeMetric, this.activeLevel);
+                if (isSupported) {
+                    const metricsData = this.metricsCache.get(metricsKey);
+                    if (metricsData && metricsData[key] !== undefined) {
+                        val = metricsData[key];
+                    }
                 }
 
                 this.tooltip.show(this.activeLevel, key, val, regionName, state, this.activeMetric);
