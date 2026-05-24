@@ -213,24 +213,49 @@ export class MapManager {
         if (this.activeState === stateCode) return;
         this.activeState = stateCode;
 
-        // Clear existing features
+        // Clear existing features so map is empty during flight (smooth transition)
         if (this.geoJsonLayer) {
             this.geoJsonLayer.clearLayers();
         }
 
         this.setLoading(true);
         try {
-            // Load metrics for the new state (use cache if available)
+            // Start flying to the new state immediately and get the promise!
+            const flight = this.flyTo(stateCode === 'WA' ? 47.4009 : 31.9686, stateCode === 'WA' ? -121.4905 : -99.9018, stateCode === 'WA' ? 7 : 6);
+
+            // Load metrics for the new state in parallel (use cache if available)
             let metricsData = this.metricsDataCache.get(stateCode);
+            let metricsPromise: Promise<Response> | null = null;
             if (!metricsData && this.manifest) {
                 const metricsVersion = this.manifest.metricsVersions[stateCode];
                 if (!metricsVersion) throw new Error(`Missing metrics version for state ${stateCode}`);
-                
                 const metricsFilename = `${stateCode.toLowerCase()}_metrics_${metricsVersion}.json`;
-                const res = await fetch(`${BASE_URL}data/${metricsFilename}`);
-                if (!res.ok) throw new Error(`Failed to load metrics for ${stateCode}`);
-                
-                const rawData = await res.json() as any;
+                metricsPromise = fetch(`${BASE_URL}data/${metricsFilename}`);
+            }
+
+            // Load geodata for the active level in parallel (use cache if available)
+            const cacheKey = `${stateCode}_${this.activeLevel}`;
+            let geodata = this.geodataCache.get(cacheKey);
+            let geodataPromise: Promise<Response> | null = null;
+            if (!geodata && this.manifest) {
+                const geodataVersion = this.manifest.geodataVersions[stateCode];
+                if (!geodataVersion) throw new Error(`Missing geodata version for state ${stateCode}`);
+                const geodataFilename = `${stateCode.toLowerCase()}_${this.activeLevel}_geodata_${geodataVersion}.json`;
+                geodataPromise = fetch(`${BASE_URL}data/geodata/${geodataFilename}`);
+            }
+
+            // Await both fetches (they run asynchronously without blocking the flight)
+            const [metricsRes, geodataRes] = await Promise.all([
+                metricsPromise,
+                geodataPromise
+            ]);
+
+            // Wait until flight panning finishes before running CPU-heavy parsing and rendering
+            await flight;
+
+            if (metricsRes) {
+                if (!metricsRes.ok) throw new Error(`Failed to load metrics for ${stateCode}`);
+                const rawData = await metricsRes.json();
                 if (!rawData.levels) {
                     rawData.levels = {
                         zip: rawData.data || {},
@@ -248,31 +273,15 @@ export class MapManager {
                 this.metricsData = metricsData;
             }
 
-            // Load geodata for active level for the new state (use cache if available)
-            const cacheKey = `${stateCode}_${this.activeLevel}`;
-            let geodata = this.geodataCache.get(cacheKey);
-            if (!geodata && this.manifest) {
-                const geodataVersion = this.manifest.geodataVersions[stateCode];
-                if (!geodataVersion) throw new Error(`Missing geodata version for state ${stateCode}`);
-                
-                const geodataFilename = `${stateCode.toLowerCase()}_${this.activeLevel}_geodata_${geodataVersion}.json`;
-                const res = await fetch(`${BASE_URL}data/geodata/${geodataFilename}`);
-                if (!res.ok) throw new Error(`Failed to load ${this.activeLevel} geodata for ${stateCode}`);
-                
-                geodata = await res.json();
+            if (geodataRes) {
+                if (!geodataRes.ok) throw new Error(`Failed to load ${this.activeLevel} geodata for ${stateCode}`);
+                geodata = await geodataRes.json();
                 this.geodataCache.set(cacheKey, geodata);
             }
 
+            // Add features now that map is stationary
             if (geodata && this.geoJsonLayer) {
                 this.geoJsonLayer.addData(geodata);
-                
-                // Fly to the new state's center
-                if (stateCode === 'WA') {
-                    this.flyTo(47.4009, -121.4905, 7);
-                } else {
-                    // Default to TX center
-                    this.flyTo(31.9686, -99.9018, 6);
-                }
             }
 
             this.updateScaleBounds();
@@ -285,8 +294,24 @@ export class MapManager {
         }
     }
 
-    flyTo(lat: number, lon: number, zoom: number) {
+    flyTo(lat: number, lon: number, zoom: number): Promise<void> {
+        // Check if map center/zoom is already very close to target to avoid hanging if no move occurs
+        const currentCenter = this.map.getCenter();
+        const currentZoom = this.map.getZoom();
+        const distance = currentCenter.distanceTo([lat, lon]);
+        
+        if (distance < 100 && currentZoom === zoom) {
+            return Promise.resolve();
+        }
+
+        const flight = new Promise<void>((resolve) => {
+            this.map.once('moveend', () => {
+                resolve();
+            });
+        });
+        
         this.map.flyTo([lat, lon], zoom, { duration: 1.5 });
+        return flight;
     }
 
     private setLoading(isLoading: boolean) {
@@ -363,9 +388,9 @@ export class MapManager {
 
             // Load TX if it's supported
             if (this.manifest?.supportedStates.includes('TX')) {
-                setTimeout(() => {
-                    this.flyTo(31.9686, -99.9018, 6);
-                    this.loadStateData('TX');
+                setTimeout(async () => {
+                    const flight = this.flyTo(31.9686, -99.9018, 6);
+                    await this.loadStateData('TX', flight);
                 }, 500);
             }
         } catch (error) {
@@ -375,7 +400,7 @@ export class MapManager {
         }
     }
 
-    private async loadStateData(stateCode: string) {
+    private async loadStateData(stateCode: string, flightPromise?: Promise<void>) {
         if (this.loadedStates.has(stateCode) || !this.manifest) return;
         
         this.setLoading(true);
@@ -397,6 +422,11 @@ export class MapManager {
 
             if (!metricsRes.ok) throw new Error(`Failed to load metrics for ${stateCode}`);
             if (!geodataRes.ok) throw new Error(`Failed to load ${this.activeLevel} geodata for ${stateCode}`);
+
+            // Wait for map to stop moving (panning/zooming during initialization flight)
+            if (flightPromise) {
+                await flightPromise;
+            }
 
             const metricsData = await metricsRes.json();
             if (!metricsData.levels) {
