@@ -30,6 +30,13 @@ themeToggle?.addEventListener('click', () => {
 // 1. When metric changes in sidebar, update map and legend
 sidebar.onMetricChange((metric) => {
     mapManager.setMetric(metric);
+    // On mobile, close drawer menu after selection
+    if (window.innerWidth <= 768) {
+        const sidebarEl = document.querySelector('.sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        sidebarEl?.classList.remove('open');
+        backdrop?.classList.remove('active');
+    }
 });
 
 // 2. When search result is selected, fly map to location
@@ -94,10 +101,5 @@ menuToggle?.addEventListener('click', openMenu);
 menuClose?.addEventListener('click', closeMenu);
 backdrop?.addEventListener('click', closeMenu);
 
-// Also close menu when a metric changes on mobile
-sidebar.onMetricChange(() => {
-    if (window.innerWidth <= 768) {
-        closeMenu();
-    }
-});
+// Redundant listener removed - logic consolidated into primary callback above
 
