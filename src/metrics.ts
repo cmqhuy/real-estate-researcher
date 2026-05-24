@@ -129,7 +129,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
         description: 'Typical monthly rent normalized per square foot.',
         icon: '📐',
         category: 'investor',
-        scaleType: 'diverging',
+        scaleType: 'sequential',
         format: 'currency-cents',
         midpointType: 'rent-sqft-avg',
         supportedLevels: ['zip', 'county', 'metro', 'country']
@@ -162,7 +162,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
         description: 'Share of active listings receiving a price cut during the month.',
         icon: '✂️',
         category: 'market',
-        scaleType: 'diverging',
+        scaleType: 'sequential',
         format: 'percent',
         midpointType: 'level-mean',
         supportedLevels: ['zip', 'county', 'metro', 'state', 'country']
@@ -173,7 +173,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
         description: 'Median percentage discount among listings with price cuts.',
         icon: '📉',
         category: 'market',
-        scaleType: 'diverging',
+        scaleType: 'sequential',
         format: 'percent',
         midpointType: 'level-mean',
         supportedLevels: ['zip', 'county', 'metro', 'state', 'country']
@@ -217,7 +217,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
         description: 'Percentage of homes sold above their initial listing price.',
         icon: '🔺',
         category: 'market',
-        scaleType: 'diverging',
+        scaleType: 'sequential',
         format: 'percent',
         midpointType: 'level-mean',
         supportedLevels: ['zip', 'county', 'metro', 'state', 'country']
@@ -228,7 +228,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
         description: 'Percentage of homes sold below their initial listing price.',
         icon: '🔻',
         category: 'market',
-        scaleType: 'diverging',
+        scaleType: 'sequential',
         format: 'percent',
         midpointType: 'level-mean',
         supportedLevels: ['zip', 'county', 'metro', 'state', 'country']

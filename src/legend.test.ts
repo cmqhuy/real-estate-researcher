@@ -6,6 +6,7 @@ describe('LegendManager', () => {
         document.body.innerHTML = `
             <div class="legend-container">
                 <div id="legend-title">--</div>
+                <div class="legend-gradient"></div>
                 <div id="legend-min">--</div>
                 <div id="legend-mid">--</div>
                 <div id="legend-max">--</div>
@@ -84,5 +85,19 @@ describe('LegendManager', () => {
         expect(document.getElementById('legend-min')!.textContent).toBe('95.0%');
         expect(document.getElementById('legend-mid')!.textContent).toBe('100.0%');
         expect(document.getElementById('legend-max')!.textContent).toBe('105.0%');
+    });
+
+    it('should add sequential class to gradient bar for sequential metrics and remove for diverging', () => {
+        const legend = new LegendManager();
+        const gradient = document.querySelector('.legend-gradient') as HTMLElement;
+        expect(gradient).not.toBeNull();
+
+        // 1. activeInventory is sequential
+        legend.update('activeInventory', 50, 1500, 750);
+        expect(gradient.classList.contains('sequential')).toBe(true);
+
+        // 2. homeValue is diverging
+        legend.update('homeValue', 100000, 500000, 300000);
+        expect(gradient.classList.contains('sequential')).toBe(false);
     });
 });

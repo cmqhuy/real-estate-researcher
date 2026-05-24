@@ -404,6 +404,10 @@ body {
   border: 1px solid var(--color-border);
 }
 
+.legend-gradient.sequential {
+  background: linear-gradient(to right, var(--color-map-neutral), var(--color-map-positive));
+}
+
 .legend-labels {
   display: flex;
   justify-content: space-between;
