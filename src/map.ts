@@ -3,6 +3,8 @@ import { getColor } from './colors';
 import type { MetricType, GeographicLevel } from './colors';
 import { TooltipManager } from './tooltip';
 
+const BASE_URL = import.meta.env.BASE_URL;
+
 export interface RegionMetrics {
     homeValue?: number;
     homeYoyGrowth?: number;
@@ -179,7 +181,7 @@ export class MapManager {
                 const stateCode = 'TX'; // Demo state
                 const geodataVersion = this.manifest.geodataVersions[stateCode];
                 const filename = `${stateCode.toLowerCase()}_${level}_geodata_${geodataVersion}.json`;
-                const res = await fetch(`/data/geodata/${filename}`);
+                const res = await fetch(`${BASE_URL}data/geodata/${filename}`);
                 if (!res.ok) throw new Error(`Failed to load ${level} geodata`);
                 geodata = await res.json();
                 this.geodataCache.set(level, geodata);
@@ -222,7 +224,7 @@ export class MapManager {
     private async initData() {
         this.setLoading(true);
         try {
-            const res = await fetch('/data/manifest.json');
+            const res = await fetch(`${BASE_URL}data/manifest.json`);
             this.manifest = await res.json();
             
             // Check if data is outdated
@@ -266,7 +268,7 @@ export class MapManager {
                     }
                     
                     try {
-                        const refreshRes = await fetch('/api/refresh-data');
+                        const refreshRes = await fetch(`${BASE_URL}api/refresh-data`);
                         if (refreshRes.ok) {
                             window.location.reload();
                             return;
@@ -309,8 +311,8 @@ export class MapManager {
             const geodataFilename = `${stateCode.toLowerCase()}_${this.activeLevel}_geodata_${geodataVersion}.json`;
 
             const [metricsRes, geodataRes] = await Promise.all([
-                fetch(`/data/${metricsFilename}`),
-                fetch(`/data/geodata/${geodataFilename}`)
+                fetch(`${BASE_URL}data/${metricsFilename}`),
+                fetch(`${BASE_URL}data/geodata/${geodataFilename}`)
             ]);
 
             if (!metricsRes.ok) throw new Error(`Failed to load metrics for ${stateCode}`);
