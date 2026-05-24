@@ -14,18 +14,39 @@ export class TooltipManager {
 
         document.addEventListener('mousemove', (e) => {
             if (this.element.classList.contains('visible')) {
-                this.element.style.left = `${e.pageX}px`;
-                this.element.style.top = `${e.pageY}px`;
+                // Offset slightly from cursor to avoid covering it
+                this.element.style.left = `${e.pageX + 15}px`;
+                this.element.style.top = `${e.pageY + 15}px`;
             }
         });
     }
 
-    show(zip: string, value: number | null, city: string, state: string, metricName: string, isPercent: boolean) {
-        document.getElementById('tt-zip')!.textContent = `ZIP ${zip}`;
+    show(level: string, id: string, value: number | null, name: string, state: string, metricName: string, isPercent: boolean) {
+        let headerText = 'ZIP Code';
+        let locationText = name;
+
+        if (level === 'zip') {
+            headerText = `ZIP Code ${id}`;
+            locationText = state ? `${name}, ${state}` : name;
+        } else if (level === 'county') {
+            headerText = 'County';
+            locationText = state ? `${name}, ${state}` : name;
+        } else if (level === 'metro') {
+            headerText = 'Metro Area';
+            locationText = name;
+        } else if (level === 'state') {
+            headerText = 'State';
+            locationText = name;
+        } else if (level === 'country') {
+            headerText = 'Country';
+            locationText = name;
+        }
+
+        document.getElementById('tt-zip')!.textContent = headerText;
         
         let formattedValue = 'N/A';
         if (value !== null && value !== undefined) {
-            if (metricName === 'Days on Market') {
+            if (metricName.includes('Days on Market')) {
                 formattedValue = `${Math.round(value)} days`;
             } else if (isPercent) {
                 const sign = value > 0 ? '+' : '';
@@ -40,7 +61,7 @@ export class TooltipManager {
         }
         
         document.getElementById('tt-value')!.textContent = formattedValue;
-        document.getElementById('tt-location')!.textContent = `${city}, ${state}`;
+        document.getElementById('tt-location')!.textContent = locationText;
         document.getElementById('tt-metric-name')!.textContent = metricName;
         
         this.element.classList.add('visible');

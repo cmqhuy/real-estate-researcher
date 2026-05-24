@@ -2,6 +2,8 @@
 export type MetricType = 'homeValue' | 'homeYoyGrowth' | 'homeFiveYearGrowth' | 'homeMomGrowth' 
     | 'rentValue' | 'rentYoyGrowth' | 'rentFiveYearGrowth' | 'rentMomGrowth' | 'homeDaysOnMarket' | 'rentDaysOnMarket';
 
+export type GeographicLevel = 'zip' | 'county' | 'metro' | 'state' | 'country';
+
 // Color scale: Deep Blue -> Neutral/White -> Deep Red
 const COLORS = {
     negative: [33, 102, 172] as [number, number, number], // #2166ac

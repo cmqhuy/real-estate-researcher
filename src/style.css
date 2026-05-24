@@ -173,15 +173,61 @@ body {
   background-color: var(--color-bg-sidebar-hover) !important;
 }
 
-/* Search Bar Overlay */
-.search-container {
+/* Top Controls Container */
+.top-controls {
   position: absolute;
   top: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
+  display: flex;
+  gap: 1rem;
   z-index: 1000;
+  width: calc(100% - 3rem);
+  max-width: 760px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Search Bar Overlay */
+.search-container {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  z-index: 1000;
+}
+
+/* Level Selector */
+.level-selector {
+  display: flex;
+  background-color: var(--color-bg-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0.25rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.level-btn {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.level-btn:hover {
+  color: var(--color-text-main);
+  background-color: var(--color-bg-sidebar-hover);
+}
+
+.level-btn.active {
+  color: #ffffff;
+  background-color: var(--color-accent);
 }
 
 #location-search {

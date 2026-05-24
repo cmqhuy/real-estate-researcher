@@ -76,10 +76,19 @@
 
       <!-- Main Content -->
       <main class="main-content">
-        <!-- Search Bar Overlay -->
-        <div class="search-container">
-          <input type="text" id="location-search" placeholder="Search by city, zip, or state..." autocomplete="off" spellcheck="false" />
-          <ul id="search-results" class="search-results hidden"></ul>
+        <!-- Top Controls -->
+        <div class="top-controls">
+          <div class="search-container">
+            <input type="text" id="location-search" placeholder="Search by city, zip, or state..." autocomplete="off" spellcheck="false" />
+            <ul id="search-results" class="search-results hidden"></ul>
+          </div>
+          <div class="level-selector" id="level-selector">
+            <button class="level-btn" data-level="country">Country</button>
+            <button class="level-btn" data-level="state">State</button>
+            <button class="level-btn" data-level="metro">Metro</button>
+            <button class="level-btn" data-level="county">County</button>
+            <button class="level-btn active" data-level="zip">Zip</button>
+          </div>
         </div>
 
         <!-- Map Container -->

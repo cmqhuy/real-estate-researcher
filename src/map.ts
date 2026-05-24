@@ -1,27 +1,33 @@
 import * as L from 'leaflet';
 import { getColor } from './colors';
-import type { MetricType } from './colors';
+import type { MetricType, GeographicLevel } from './colors';
 import { TooltipManager } from './tooltip';
+
+export interface RegionMetrics {
+    homeValue?: number;
+    homeYoyGrowth?: number;
+    homeFiveYearGrowth?: number;
+    homeMomGrowth?: number;
+    rentValue?: number;
+    rentYoyGrowth?: number;
+    rentFiveYearGrowth?: number;
+    rentMomGrowth?: number;
+    homeDaysOnMarket?: number;
+    rentDaysOnMarket?: number;
+    name: string;
+    state: string;
+}
 
 export interface MetricsData {
     national_avg: number;
     rent_avg?: number;
-    data: {
-        [zipCode: string]: {
-            homeValue?: number;
-            homeYoyGrowth?: number;
-            homeFiveYearGrowth?: number;
-            homeMomGrowth?: number;
-            rentValue?: number;
-            rentYoyGrowth?: number;
-            rentFiveYearGrowth?: number;
-            rentMomGrowth?: number;
-            homeDaysOnMarket?: number;
-            rentDaysOnMarket?: number;
-            city: string;
-            state: string;
-        }
-    }
+    levels: {
+        zip: Record<string, RegionMetrics>;
+        county: Record<string, RegionMetrics>;
+        metro: Record<string, RegionMetrics>;
+        state: Record<string, RegionMetrics>;
+        country: Record<string, RegionMetrics>;
+    };
 }
 
 export interface ManifestData {
@@ -35,13 +41,17 @@ export class MapManager {
     private canvasRenderer: L.Renderer;
     private geoJsonLayer: L.GeoJSON | null = null;
     private loadedStates: Set<string> = new Set();
-    private metricsData: MetricsData = { national_avg: 0, data: {} };
+    private metricsData: MetricsData = { national_avg: 0, levels: { zip: {}, county: {}, metro: {}, state: {}, country: {} } };
     private activeMetric: MetricType = 'homeValue';
+    private activeLevel: GeographicLevel = 'zip';
     private tooltip: TooltipManager;
     private loadingCount = 0;
     private manifest: ManifestData | null = null;
 
-    // Pre-computed color cache: zip -> fillColor string
+    // Cache of loaded level geodata: level -> GeoJSON object
+    private geodataCache: Map<string, any> = new Map();
+
+    // Pre-computed color cache: regionKey -> fillColor string
     private colorCache: Map<string, string> = new Map();
     
     // Bounds tracking to dynamically update color scale
@@ -52,6 +62,20 @@ export class MapManager {
     private onScaleUpdateCallback: ((min: number, max: number, mid: number) => void) | null = null;
     private tileLayer: L.TileLayer;
     private currentTheme: string;
+
+    private stateNameToCode: Record<string, string> = {
+        'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
+        'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA',
+        'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA',
+        'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+        'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS', 'Missouri': 'MO',
+        'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ',
+        'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH',
+        'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+        'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT',
+        'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY',
+        'District of Columbia': 'DC'
+    };
 
     constructor(tooltip: TooltipManager, theme: string = 'dark') {
         this.tooltip = tooltip;
@@ -85,8 +109,7 @@ export class MapManager {
         
         this.geoJsonLayer = L.geoJSON(undefined, {
             style: this.getFeatureStyle.bind(this),
-            onEachFeature: this.onEachFeature.bind(this),
-            renderer: this.canvasRenderer
+            onEachFeature: this.onEachFeature.bind(this)
         }).addTo(this.map);
 
         // Load data manifest
@@ -117,6 +140,48 @@ export class MapManager {
         this.applyColorCache();
     }
 
+    async setLevel(level: GeographicLevel) {
+        if (this.activeLevel === level) return;
+        this.activeLevel = level;
+
+        // Clear existing features
+        if (this.geoJsonLayer) {
+            this.geoJsonLayer.clearLayers();
+        }
+
+        this.setLoading(true);
+        try {
+            // Check cache first
+            let geodata = this.geodataCache.get(level);
+            if (!geodata && this.manifest) {
+                const stateCode = 'TX'; // Demo state
+                const geodataVersion = this.manifest.geodataVersions[stateCode];
+                const filename = `${stateCode.toLowerCase()}_${level}_geodata_${geodataVersion}.json`;
+                const res = await fetch(`/data/geodata/${filename}`);
+                if (!res.ok) throw new Error(`Failed to load ${level} geodata`);
+                geodata = await res.json();
+                this.geodataCache.set(level, geodata);
+            }
+
+            if (geodata && this.geoJsonLayer) {
+                this.geoJsonLayer.addData(geodata);
+                
+                // Fit bounds to new features
+                const bounds = this.geoJsonLayer.getBounds();
+                if (bounds.isValid()) {
+                    this.map.fitBounds(bounds, { padding: [20, 20] });
+                }
+            }
+
+            this.updateScaleBounds();
+            this.applyColorCache();
+        } catch (error) {
+            console.error(`Error switching to level ${level}:`, error);
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
     flyTo(lat: number, lon: number, zoom: number) {
         this.map.flyTo([lat, lon], zoom, { duration: 1.5 });
     }
@@ -138,27 +203,35 @@ export class MapManager {
             const res = await fetch('/data/manifest.json');
             this.manifest = await res.json();
             
-            // Check if data is outdated (>= 7 days old)
+            // Check if data is outdated
             if (this.manifest) {
                 let outdated = false;
                 const now = new Date();
                 
-                // Check the first supported state's version
                 const stateToCheck = this.manifest.supportedStates[0] || 'TX';
-                const version = this.manifest.metricsVersions[stateToCheck];
+                const metricsVer = this.manifest.metricsVersions[stateToCheck];
+                const geodataVer = this.manifest.geodataVersions[stateToCheck];
                 
-                if (version && version.length >= 8) {
-                    const year = parseInt(version.substring(0, 4), 10);
-                    const month = parseInt(version.substring(4, 6), 10) - 1; // 0-indexed
-                    const day = parseInt(version.substring(6, 8), 10);
+                // 1. Check Metrics (7 days)
+                if (metricsVer && metricsVer.length >= 8) {
+                    const year = parseInt(metricsVer.substring(0, 4), 10);
+                    const month = parseInt(metricsVer.substring(4, 6), 10) - 1;
+                    const day = parseInt(metricsVer.substring(6, 8), 10);
                     const dataDate = new Date(year, month, day);
-                    
                     const diffTime = now.getTime() - dataDate.getTime();
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
-                    
-                    if (diffDays >= 7) {
-                        outdated = true;
-                    }
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays >= 7) outdated = true;
+                }
+                
+                // 2. Check Geodata (30 days)
+                if (geodataVer && geodataVer.length >= 8) {
+                    const year = parseInt(geodataVer.substring(0, 4), 10);
+                    const month = parseInt(geodataVer.substring(4, 6), 10) - 1;
+                    const day = parseInt(geodataVer.substring(6, 8), 10);
+                    const dataDate = new Date(year, month, day);
+                    const diffTime = now.getTime() - dataDate.getTime();
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays >= 30) outdated = true;
                 }
                 
                 if (outdated) {
@@ -174,7 +247,7 @@ export class MapManager {
                         const refreshRes = await fetch('/api/refresh-data');
                         if (refreshRes.ok) {
                             window.location.reload();
-                            return; // Stop execution, page will reload
+                            return;
                         } else {
                             console.error('Failed to refresh data');
                         }
@@ -184,10 +257,10 @@ export class MapManager {
                 }
             }
 
-            // For demo, auto-load TX if it's supported
+            // Load TX if it's supported
             if (this.manifest?.supportedStates.includes('TX')) {
                 setTimeout(() => {
-                    this.flyTo(30.2672, -97.7431, 10);
+                    this.flyTo(31.9686, -99.9018, 6);
                     this.loadStateData('TX');
                 }, 500);
             }
@@ -211,30 +284,33 @@ export class MapManager {
             }
 
             const metricsFilename = `${stateCode.toLowerCase()}_metrics_${metricsVersion}.json`;
-            const geodataFilename = `${stateCode.toLowerCase()}_geodata_${geodataVersion}.json`;
+            const geodataFilename = `${stateCode.toLowerCase()}_${this.activeLevel}_geodata_${geodataVersion}.json`;
 
-            // Fetch metrics and geodata concurrently
             const [metricsRes, geodataRes] = await Promise.all([
                 fetch(`/data/${metricsFilename}`),
                 fetch(`/data/geodata/${geodataFilename}`)
             ]);
 
             if (!metricsRes.ok) throw new Error(`Failed to load metrics for ${stateCode}`);
-            if (!geodataRes.ok) throw new Error(`Failed to load geodata for ${stateCode}`);
+            if (!geodataRes.ok) throw new Error(`Failed to load ${this.activeLevel} geodata for ${stateCode}`);
 
             const metricsData = await metricsRes.json();
             const geodata = await geodataRes.json();
 
-            // Merge data into our global map (we average the national_avg for simplicity if loading multiple states)
-            this.metricsData.data = { ...this.metricsData.data, ...metricsData.data };
-            this.metricsData.national_avg = metricsData.national_avg; 
-
+            this.metricsData = metricsData;
+            this.geodataCache.set(this.activeLevel, geodata);
             this.loadedStates.add(stateCode);
+
             this.updateScaleBounds();
 
-            // Add shapes to map
             if (this.geoJsonLayer) {
                 this.geoJsonLayer.addData(geodata);
+                
+                // Fit bounds
+                const bounds = this.geoJsonLayer.getBounds();
+                if (bounds.isValid()) {
+                    this.map.fitBounds(bounds, { padding: [20, 20] });
+                }
             }
             
         } catch (error) {
@@ -244,15 +320,39 @@ export class MapManager {
         }
     }
 
+    private getFeatureKey(feature: any, level: GeographicLevel): string {
+        if (level === 'zip') {
+            return feature.properties.ZCTA5CE10 || feature.properties.ZCTA5CE20 || '';
+        }
+        if (level === 'county') {
+            const state = feature.properties.STATE || '';
+            const county = feature.properties.COUNTY || '';
+            return state.trim() + county.trim();
+        }
+        if (level === 'metro') {
+            const name = feature.properties.NAME || '';
+            return name.replace(/\s+(Metro|Micro)\s+Area$/i, '').trim();
+        }
+        if (level === 'state') {
+            const name = feature.properties.name || '';
+            return this.stateNameToCode[name] || name;
+        }
+        if (level === 'country') {
+            return 'US';
+        }
+        return '';
+    }
+
     private updateScaleBounds() {
-        if (Object.keys(this.metricsData.data).length === 0) return;
+        const levelData = this.metricsData.levels[this.activeLevel] || {};
+        if (Object.keys(levelData).length === 0) return;
 
         let min = Infinity;
         let max = -Infinity;
 
         const vals: number[] = [];
-        for (const zip in this.metricsData.data) {
-            const val = this.metricsData.data[zip][this.activeMetric];
+        for (const key in levelData) {
+            const val = levelData[key][this.activeMetric];
             if (val !== null && val !== undefined) {
                 vals.push(val);
             }
@@ -260,9 +360,15 @@ export class MapManager {
 
         if (vals.length > 0) {
             vals.sort((a, b) => a - b);
-            const p5 = vals[Math.floor(vals.length * 0.05)];
-            const p95 = vals[Math.floor(vals.length * 0.95)];
+            let p5 = vals[Math.floor(vals.length * 0.05)];
+            let p95 = vals[Math.floor(vals.length * 0.95)];
             
+            // If they are equal (e.g. only 1 data point), create a synthetic range
+            if (p5 === p95) {
+                p5 = p5 * 0.8;
+                p95 = p95 * 1.2;
+            }
+
             const isAbsolute = this.activeMetric === 'homeValue' || this.activeMetric === 'rentValue';
             const isDOM = this.activeMetric === 'homeDaysOnMarket' || this.activeMetric === 'rentDaysOnMarket';
             
@@ -299,29 +405,28 @@ export class MapManager {
             this.onScaleUpdateCallback(min, max, mid);
         }
 
-        // Pre-compute colors for all loaded ZIPs now that scale is known
         this.rebuildColorCache();
     }
 
-    /** Pre-compute fillColor for every ZIP so getFeatureStyle is a fast lookup. */
     private rebuildColorCache() {
         this.colorCache.clear();
-        for (const zip in this.metricsData.data) {
-            const val = this.metricsData.data[zip][this.activeMetric] ?? null;
-            this.colorCache.set(zip, getColor(val, this.currentMin, this.currentMax, this.activeMetric, this.currentMid));
+        const levelData = this.metricsData.levels[this.activeLevel] || {};
+        for (const key in levelData) {
+            const val = levelData[key][this.activeMetric] ?? null;
+            this.colorCache.set(key, getColor(val, this.currentMin, this.currentMax, this.activeMetric, this.currentMid));
         }
     }
 
-    /** Apply the pre-computed cache to all GeoJSON layers in a single rAF batch. */
     private applyColorCache() {
         if (!this.geoJsonLayer) return;
         const borderColor = this.currentTheme === 'light' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)';
         requestAnimationFrame(() => {
             this.geoJsonLayer!.eachLayer((layer: any) => {
                 if (!layer.feature) return;
-                const zip = layer.feature.properties.ZCTA5CE10 || layer.feature.properties.ZCTA5CE20;
-                const fillColor = this.colorCache.get(zip) ?? 'rgba(0,0,0,0)';
-                const hasData = this.metricsData.data[zip]?.[this.activeMetric] != null;
+                const key = this.getFeatureKey(layer.feature, this.activeLevel);
+                const fillColor = this.colorCache.get(key) ?? 'rgba(0,0,0,0)';
+                const val = this.metricsData.levels[this.activeLevel]?.[key]?.[this.activeMetric] ?? null;
+                const hasData = val !== null;
                 layer.setStyle({
                     fillColor,
                     color: borderColor,
@@ -334,14 +439,11 @@ export class MapManager {
     }
 
     private getFeatureStyle(feature: any): L.PathOptions {
-        const zip = feature.properties.ZCTA5CE10 || feature.properties.ZCTA5CE20;
-        // Use cache if available; fall back to computing on the fly (e.g. initial render)
-        const fillColor = this.colorCache.get(zip)
-            ?? getColor(
-                this.metricsData.data[zip]?.[this.activeMetric] ?? null,
-                this.currentMin, this.currentMax, this.activeMetric, this.currentMid
-            );
-        const hasData = this.metricsData.data[zip]?.[this.activeMetric] != null;
+        const key = this.getFeatureKey(feature, this.activeLevel);
+        const val = this.metricsData.levels[this.activeLevel]?.[key]?.[this.activeMetric] ?? null;
+        const fillColor = this.colorCache.get(key)
+            ?? getColor(val, this.currentMin, this.currentMax, this.activeMetric, this.currentMid);
+        const hasData = val !== null;
         const borderColor = this.currentTheme === 'light' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)';
 
         return {
@@ -360,16 +462,19 @@ export class MapManager {
                 target.setStyle({ weight: 2, color: 'white', fillOpacity: 0.8 });
                 target.bringToFront();
 
-                const zip = feature.properties.ZCTA5CE10 || feature.properties.ZCTA5CE20;
+                const key = this.getFeatureKey(feature, this.activeLevel);
                 let val: number | null = null;
-                let city = 'Unknown City';
+                let regionName = 'Unknown Region';
                 let state = '';
                 
-                if (this.metricsData.data[zip]) {
-                    const d = this.metricsData.data[zip];
+                const levelData = this.metricsData.levels[this.activeLevel];
+                if (levelData && levelData[key]) {
+                    const d = levelData[key];
                     val = d[this.activeMetric] ?? null;
-                    city = d.city;
-                    state = d.state;
+                    regionName = d.name;
+                    state = d.state || '';
+                } else {
+                    regionName = feature.properties.NAME || feature.properties.name || key;
                 }
 
                 let metricName = 'Home Value';
@@ -385,7 +490,7 @@ export class MapManager {
                 if (this.activeMetric === 'homeDaysOnMarket') { metricName = 'Days on Market'; }
                 if (this.activeMetric === 'rentDaysOnMarket') { metricName = 'Days on Market (Simulated)'; }
 
-                this.tooltip.show(zip, val, city, state, metricName, isGrowth);
+                this.tooltip.show(this.activeLevel, key, val, regionName, state, metricName, isGrowth);
             },
             mouseout: (e: any) => {
                 if (this.geoJsonLayer) {

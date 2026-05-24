@@ -52,3 +52,16 @@ loadingOverlay.innerHTML = `
 `;
 document.body.appendChild(loadingOverlay);
 
+// Wire Level Selector
+const levelButtons = document.querySelectorAll('.level-btn');
+levelButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const level = btn.getAttribute('data-level') as any;
+        if (level) {
+            levelButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            mapManager.setLevel(level);
+        }
+    });
+});
+
