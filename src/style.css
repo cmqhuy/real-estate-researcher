@@ -214,6 +214,7 @@ body {
   width: 100%;
   max-width: 400px;
   z-index: 1000;
+  min-width: 0; /* Prevents overflow in flexbox layout */
 }
 
 /* Level Selector */
@@ -281,6 +282,7 @@ body {
 
 #location-search {
   width: 100%;
+  min-width: 0; /* Ensures Chrome allows input to shrink in flex containers */
   padding: 1rem 1.5rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
