@@ -16,9 +16,12 @@
       <aside class="sidebar">
         <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
           <h1>Real Estate Map</h1>
-          <button id="theme-toggle" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer; font-size: 1.2rem; padding: 0.2rem;" title="Toggle Theme">
-            🌓
-          </button>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <button id="theme-toggle" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer; font-size: 1.2rem; padding: 0.2rem;" title="Toggle Theme">
+              🌓
+            </button>
+            <button id="menu-close" class="menu-close-btn" title="Close Menu">✕</button>
+          </div>
         </div>
         
         <div class="sidebar-section">
@@ -78,15 +81,18 @@
       <main class="main-content">
         <!-- Top Controls -->
         <div class="top-controls">
-          <div class="search-container">
-            <input type="text" id="location-search" placeholder="Search by city, zip, or state..." autocomplete="off" spellcheck="false" />
-            <ul id="search-results" class="search-results hidden"></ul>
-          </div>
-          <div class="state-selector-container" id="state-selector-container">
-            <select id="state-select" class="state-select">
-              <option value="TX">Texas (TX)</option>
-              <option value="WA">Washington (WA)</option>
-            </select>
+          <div class="top-bar">
+            <button id="menu-toggle" class="menu-toggle-btn" title="Open Metrics Menu">☰</button>
+            <div class="search-container">
+              <input type="text" id="location-search" placeholder="Search locations..." autocomplete="off" spellcheck="false" />
+              <ul id="search-results" class="search-results hidden"></ul>
+            </div>
+            <div class="state-selector-container" id="state-selector-container">
+              <select id="state-select" class="state-select">
+                <option value="TX">TX</option>
+                <option value="WA">WA</option>
+              </select>
+            </div>
           </div>
           <div class="level-selector" id="level-selector">
             <button class="level-btn" data-level="country">Country</button>
@@ -113,6 +119,7 @@
           </div>
         </div>
       </main>
+      <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

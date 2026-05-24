@@ -74,3 +74,30 @@ stateSelect?.addEventListener('change', () => {
     }
 });
 
+// Mobile Sidebar Drawer Menu Toggling
+const menuToggle = document.getElementById('menu-toggle');
+const menuClose = document.getElementById('menu-close');
+const sidebarEl = document.querySelector('.sidebar');
+const backdrop = document.getElementById('sidebar-backdrop');
+
+function openMenu() {
+    sidebarEl?.classList.add('open');
+    backdrop?.classList.add('active');
+}
+
+function closeMenu() {
+    sidebarEl?.classList.remove('open');
+    backdrop?.classList.remove('active');
+}
+
+menuToggle?.addEventListener('click', openMenu);
+menuClose?.addEventListener('click', closeMenu);
+backdrop?.addEventListener('click', closeMenu);
+
+// Also close menu when a metric changes on mobile
+sidebar.onMetricChange(() => {
+    if (window.innerWidth <= 768) {
+        closeMenu();
+    }
+});
+

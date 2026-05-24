@@ -5,6 +5,7 @@ export class TooltipManager {
         this.element = document.createElement('div');
         this.element.className = 'custom-tooltip';
         this.element.innerHTML = `
+            <button class="tooltip-close-btn" id="tt-close">✕</button>
             <div class="tooltip-header" id="tt-zip">ZIP Code</div>
             <div class="tooltip-title" id="tt-value">--</div>
             <div class="tooltip-subtitle" id="tt-location">City, State</div>
@@ -12,8 +13,14 @@ export class TooltipManager {
         `;
         document.body.appendChild(this.element);
 
+        // Wire close button click event (for mobile)
+        this.element.querySelector('#tt-close')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.hide();
+        });
+
         document.addEventListener('mousemove', (e) => {
-            if (this.element.classList.contains('visible')) {
+            if (this.element.classList.contains('visible') && window.innerWidth > 768) {
                 // Offset slightly from cursor to avoid covering it
                 this.element.style.left = `${e.pageX + 15}px`;
                 this.element.style.top = `${e.pageY + 15}px`;
@@ -64,6 +71,10 @@ export class TooltipManager {
         document.getElementById('tt-location')!.textContent = locationText;
         document.getElementById('tt-metric-name')!.textContent = metricName;
         
+        if (window.innerWidth <= 768) {
+            this.element.style.left = '';
+            this.element.style.top = '';
+        }
         this.element.classList.add('visible');
     }
 
