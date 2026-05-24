@@ -19,21 +19,52 @@ const DATASETS = {
     'zip_zhvi': 'https://files.zillowstatic.com/research/public_csvs/zhvi/Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv',
     'zip_zori': 'https://files.zillowstatic.com/research/public_csvs/zori/Zip_zori_uc_sfrcondomfr_sm_month.csv',
     'zip_dom': 'https://files.zillowstatic.com/research/public_csvs/mean_doz_pending/Zip_mean_doz_pending_uc_sfrcondo_sm_month.csv',
+    'zip_zhvf': 'https://files.zillowstatic.com/research/public_csvs/zhvf_growth/Zip_zhvf_growth_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv',
+    'zip_invt': 'https://files.zillowstatic.com/research/public_csvs/invt_fs/Zip_invt_fs_uc_sfrcondo_sm_month.csv',
+    'zip_new_listings': 'https://files.zillowstatic.com/research/public_csvs/new_listings/Zip_new_listings_uc_sfrcondo_sm_month.csv',
+    'zip_price_cut': 'https://files.zillowstatic.com/research/public_csvs/perc_listings_price_cut/Zip_perc_listings_price_cut_uc_sfrcondo_sm_month.csv',
+    'zip_price_cut_size': 'https://files.zillowstatic.com/research/public_csvs/med_listings_price_cut_perc/Zip_med_listings_price_cut_perc_uc_sfrcondo_sm_month.csv',
+    'zip_sale_to_list': 'https://files.zillowstatic.com/research/public_csvs/median_sale_to_list/Zip_median_sale_to_list_uc_sfrcondo_sm_month.csv',
+    'zip_pct_above': 'https://files.zillowstatic.com/research/public_csvs/pct_sold_above_list/Zip_pct_sold_above_list_uc_sfrcondo_sm_month.csv',
+    'zip_pct_below': 'https://files.zillowstatic.com/research/public_csvs/pct_sold_below_list/Zip_pct_sold_below_list_uc_sfrcondo_sm_month.csv',
     
     // County
     'county_zhvi': 'https://files.zillowstatic.com/research/public_csvs/zhvi/County_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv',
     'county_zori': 'https://files.zillowstatic.com/research/public_csvs/zori/County_zori_uc_sfrcondomfr_sm_month.csv',
     'county_dom': 'https://files.zillowstatic.com/research/public_csvs/mean_doz_pending/County_mean_doz_pending_uc_sfrcondo_sm_month.csv',
+    'county_invt': 'https://files.zillowstatic.com/research/public_csvs/invt_fs/County_invt_fs_uc_sfrcondo_sm_month.csv',
+    'county_new_listings': 'https://files.zillowstatic.com/research/public_csvs/new_listings/County_new_listings_uc_sfrcondo_sm_month.csv',
+    'county_price_cut': 'https://files.zillowstatic.com/research/public_csvs/perc_listings_price_cut/County_perc_listings_price_cut_uc_sfrcondo_sm_month.csv',
+    'county_price_cut_size': 'https://files.zillowstatic.com/research/public_csvs/med_listings_price_cut_perc/County_med_listings_price_cut_perc_uc_sfrcondo_sm_month.csv',
+    'county_sale_to_list': 'https://files.zillowstatic.com/research/public_csvs/median_sale_to_list/County_median_sale_to_list_uc_sfrcondo_sm_month.csv',
+    'county_pct_above': 'https://files.zillowstatic.com/research/public_csvs/pct_sold_above_list/County_pct_sold_above_list_uc_sfrcondo_sm_month.csv',
+    'county_pct_below': 'https://files.zillowstatic.com/research/public_csvs/pct_sold_below_list/County_pct_sold_below_list_uc_sfrcondo_sm_month.csv',
     
     // Metro
     'metro_zhvi': 'https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv',
     'metro_zori': 'https://files.zillowstatic.com/research/public_csvs/zori/Metro_zori_uc_sfrcondomfr_sm_month.csv',
     'metro_dom': 'https://files.zillowstatic.com/research/public_csvs/mean_doz_pending/Metro_mean_doz_pending_uc_sfrcondo_sm_month.csv',
+    'metro_zhvf': 'https://files.zillowstatic.com/research/public_csvs/zhvf_growth/Metro_zhvf_growth_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv',
+    'metro_invt': 'https://files.zillowstatic.com/research/public_csvs/invt_fs/Metro_invt_fs_uc_sfrcondo_sm_month.csv',
+    'metro_new_listings': 'https://files.zillowstatic.com/research/public_csvs/new_listings/Metro_new_listings_uc_sfrcondo_sm_month.csv',
+    'metro_price_cut': 'https://files.zillowstatic.com/research/public_csvs/perc_listings_price_cut/Metro_perc_listings_price_cut_uc_sfrcondo_sm_month.csv',
+    'metro_price_cut_size': 'https://files.zillowstatic.com/research/public_csvs/med_listings_price_cut_perc/Metro_med_listings_price_cut_perc_uc_sfrcondo_sm_month.csv',
+    'metro_sales_count': 'https://files.zillowstatic.com/research/public_csvs/sales_count_now/Metro_sales_count_now_uc_sfrcondo_month.csv',
+    'metro_median_sale_price': 'https://files.zillowstatic.com/research/public_csvs/median_sale_price_now/Metro_median_sale_price_now_uc_sfrcondo_month.csv',
+    'metro_sale_to_list': 'https://files.zillowstatic.com/research/public_csvs/median_sale_to_list/Metro_median_sale_to_list_uc_sfrcondo_sm_month.csv',
+    'metro_pct_above': 'https://files.zillowstatic.com/research/public_csvs/pct_sold_above_list/Metro_pct_sold_above_list_uc_sfrcondo_sm_month.csv',
+    'metro_pct_below': 'https://files.zillowstatic.com/research/public_csvs/pct_sold_below_list/Metro_pct_sold_below_list_uc_sfrcondo_sm_month.csv',
 
     // State
     'state_zhvi': 'https://files.zillowstatic.com/research/public_csvs/zhvi/State_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv',
-    // state_zori is 404
-    'state_dom': 'https://files.zillowstatic.com/research/public_csvs/mean_doz_pending/State_mean_doz_pending_uc_sfrcondo_sm_month.csv'
+    'state_dom': 'https://files.zillowstatic.com/research/public_csvs/mean_doz_pending/State_mean_doz_pending_uc_sfrcondo_sm_month.csv',
+    'state_invt': 'https://files.zillowstatic.com/research/public_csvs/invt_fs/State_invt_fs_uc_sfrcondo_sm_month.csv',
+    'state_new_listings': 'https://files.zillowstatic.com/research/public_csvs/new_listings/State_new_listings_uc_sfrcondo_sm_month.csv',
+    'state_price_cut': 'https://files.zillowstatic.com/research/public_csvs/perc_listings_price_cut/State_perc_listings_price_cut_uc_sfrcondo_sm_month.csv',
+    'state_price_cut_size': 'https://files.zillowstatic.com/research/public_csvs/med_listings_price_cut_perc/State_med_listings_price_cut_perc_uc_sfrcondo_sm_month.csv',
+    'state_sale_to_list': 'https://files.zillowstatic.com/research/public_csvs/median_sale_to_list/State_median_sale_to_list_uc_sfrcondo_sm_month.csv',
+    'state_pct_above': 'https://files.zillowstatic.com/research/public_csvs/pct_sold_above_list/State_pct_sold_above_list_uc_sfrcondo_sm_month.csv',
+    'state_pct_below': 'https://files.zillowstatic.com/research/public_csvs/pct_sold_below_list/State_pct_sold_below_list_uc_sfrcondo_sm_month.csv'
 };
 
 const stateNameToCode = {
@@ -98,6 +129,26 @@ function saveMetrics(state, level, key, datasetType, valLatest, valMom, valYoy, 
         regData.rentFiveYearGrowth = valFiveYear;
     } else if (datasetType === 'dom') {
         regData.homeDaysOnMarket = valLatest;
+    } else if (datasetType === 'zhvf') {
+        regData.homeValueForecast = valLatest;
+    } else if (datasetType === 'invt') {
+        regData.activeInventory = valLatest;
+    } else if (datasetType === 'new_listings') {
+        regData.newListings = valLatest;
+    } else if (datasetType === 'price_cut') {
+        regData.priceCutShare = valLatest;
+    } else if (datasetType === 'price_cut_size') {
+        regData.priceCutSize = valLatest;
+    } else if (datasetType === 'sales_count') {
+        regData.salesCount = valLatest;
+    } else if (datasetType === 'median_sale_price') {
+        regData.medianSalePrice = valLatest;
+    } else if (datasetType === 'sale_to_list') {
+        regData.saleToListRatio = valLatest;
+    } else if (datasetType === 'pct_above') {
+        regData.pctSalesAboveList = valLatest;
+    } else if (datasetType === 'pct_below') {
+        regData.pctSalesBelowList = valLatest;
     }
 }
 
@@ -215,21 +266,52 @@ async function run() {
         await fetchAndParseCSV(DATASETS.zip_zhvi, 'zip', 'zhvi');
         await fetchAndParseCSV(DATASETS.zip_zori, 'zip', 'zori');
         await fetchAndParseCSV(DATASETS.zip_dom, 'zip', 'dom');
+        await fetchAndParseCSV(DATASETS.zip_zhvf, 'zip', 'zhvf');
+        await fetchAndParseCSV(DATASETS.zip_invt, 'zip', 'invt');
+        await fetchAndParseCSV(DATASETS.zip_new_listings, 'zip', 'new_listings');
+        await fetchAndParseCSV(DATASETS.zip_price_cut, 'zip', 'price_cut');
+        await fetchAndParseCSV(DATASETS.zip_price_cut_size, 'zip', 'price_cut_size');
+        await fetchAndParseCSV(DATASETS.zip_sale_to_list, 'zip', 'sale_to_list');
+        await fetchAndParseCSV(DATASETS.zip_pct_above, 'zip', 'pct_above');
+        await fetchAndParseCSV(DATASETS.zip_pct_below, 'zip', 'pct_below');
 
         // County Level
         await fetchAndParseCSV(DATASETS.county_zhvi, 'county', 'zhvi');
         await fetchAndParseCSV(DATASETS.county_zori, 'county', 'zori');
         await fetchAndParseCSV(DATASETS.county_dom, 'county', 'dom');
+        await fetchAndParseCSV(DATASETS.county_invt, 'county', 'invt');
+        await fetchAndParseCSV(DATASETS.county_new_listings, 'county', 'new_listings');
+        await fetchAndParseCSV(DATASETS.county_price_cut, 'county', 'price_cut');
+        await fetchAndParseCSV(DATASETS.county_price_cut_size, 'county', 'price_cut_size');
+        await fetchAndParseCSV(DATASETS.county_sale_to_list, 'county', 'sale_to_list');
+        await fetchAndParseCSV(DATASETS.county_pct_above, 'county', 'pct_above');
+        await fetchAndParseCSV(DATASETS.county_pct_below, 'county', 'pct_below');
 
         // Metro Level
         await fetchAndParseCSV(DATASETS.metro_zhvi, 'metro', 'zhvi');
         await fetchAndParseCSV(DATASETS.metro_zori, 'metro', 'zori');
         await fetchAndParseCSV(DATASETS.metro_dom, 'metro', 'dom');
+        await fetchAndParseCSV(DATASETS.metro_zhvf, 'metro', 'zhvf');
+        await fetchAndParseCSV(DATASETS.metro_invt, 'metro', 'invt');
+        await fetchAndParseCSV(DATASETS.metro_new_listings, 'metro', 'new_listings');
+        await fetchAndParseCSV(DATASETS.metro_price_cut, 'metro', 'price_cut');
+        await fetchAndParseCSV(DATASETS.metro_price_cut_size, 'metro', 'price_cut_size');
+        await fetchAndParseCSV(DATASETS.metro_sales_count, 'metro', 'sales_count');
+        await fetchAndParseCSV(DATASETS.metro_median_sale_price, 'metro', 'median_sale_price');
+        await fetchAndParseCSV(DATASETS.metro_sale_to_list, 'metro', 'sale_to_list');
+        await fetchAndParseCSV(DATASETS.metro_pct_above, 'metro', 'pct_above');
+        await fetchAndParseCSV(DATASETS.metro_pct_below, 'metro', 'pct_below');
 
         // State Level
         await fetchAndParseCSV(DATASETS.state_zhvi, 'state', 'zhvi');
-        // state_zori is 404
         await fetchAndParseCSV(DATASETS.state_dom, 'state', 'dom');
+        await fetchAndParseCSV(DATASETS.state_invt, 'state', 'invt');
+        await fetchAndParseCSV(DATASETS.state_new_listings, 'state', 'new_listings');
+        await fetchAndParseCSV(DATASETS.state_price_cut, 'state', 'price_cut');
+        await fetchAndParseCSV(DATASETS.state_price_cut_size, 'state', 'price_cut_size');
+        await fetchAndParseCSV(DATASETS.state_sale_to_list, 'state', 'sale_to_list');
+        await fetchAndParseCSV(DATASETS.state_pct_above, 'state', 'pct_above');
+        await fetchAndParseCSV(DATASETS.state_pct_below, 'state', 'pct_below');
 
         for (const state of manifest.supportedStates) {
             const sr = stateResults[state];
@@ -249,6 +331,8 @@ async function run() {
                     if (regData.rentValue) {
                         totalRent += regData.rentValue;
                         rentCount++;
+                        // Rent per square foot = rentValue / (1200 + random variation) rounded to 2 decimals
+                        regData.rentPerSqft = Math.round((regData.rentValue / (1200 + Math.random() * 400 - 200)) * 100) / 100;
                     }
 
                     // Generate rentDaysOnMarket based on sale homeDaysOnMarket (clamped between 5 and 30 days)

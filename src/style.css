@@ -72,6 +72,7 @@ body {
   flex-direction: column;
   z-index: 1000;
   box-shadow: var(--shadow-md);
+  overflow-y: auto;
 }
 
 .sidebar-header {

@@ -60,4 +60,25 @@ describe('getColor', () => {
         // Should be red bias
         expect(r2).toBeGreaterThan(b2);
     });
+
+    it('should handle new metrics classification correctly', () => {
+        // 1. medianSalePrice is absolute (diverging)
+        const lowSale = getColor(200000, 100000, 500000, 'medianSalePrice', 300000);
+        const [r1, , b1] = lowSale.match(/\d+/g)!.map(Number);
+        expect(b1).toBeGreaterThan(r1); // Blue bias for below midpoint
+
+        // 2. newListings is sequential
+        const highListings = getColor(90, 0, 100, 'newListings', 50);
+        const [r2, , b2] = highListings.match(/\d+/g)!.map(Number);
+        expect(r2).toBeGreaterThan(b2); // Red bias for high count
+
+        // 3. saleToListRatio is diverging around 1.0
+        const lowRatio = getColor(0.95, 0.90, 1.10, 'saleToListRatio', 1.0);
+        const [r3, , b3] = lowRatio.match(/\d+/g)!.map(Number);
+        expect(b3).toBeGreaterThan(r3); // Blue bias for discount (< 1.0)
+
+        const highRatio = getColor(1.05, 0.90, 1.10, 'saleToListRatio', 1.0);
+        const [r4, , b4] = highRatio.match(/\d+/g)!.map(Number);
+        expect(r4).toBeGreaterThan(b4); // Red bias for premium (> 1.0)
+    });
 });

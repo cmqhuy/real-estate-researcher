@@ -16,6 +16,17 @@ export interface RegionMetrics {
     rentMomGrowth?: number;
     homeDaysOnMarket?: number;
     rentDaysOnMarket?: number;
+    homeValueForecast?: number;
+    activeInventory?: number;
+    newListings?: number;
+    priceCutShare?: number;
+    priceCutSize?: number;
+    salesCount?: number;
+    medianSalePrice?: number;
+    saleToListRatio?: number;
+    pctSalesAboveList?: number;
+    pctSalesBelowList?: number;
+    rentPerSqft?: number;
     name: string;
     state: string;
 }
@@ -513,22 +524,35 @@ export class MapManager {
                 p95 = p95 * 1.2;
             }
 
-            const isAbsolute = this.activeMetric === 'homeValue' || this.activeMetric === 'rentValue';
-            const isDOM = this.activeMetric === 'homeDaysOnMarket' || this.activeMetric === 'rentDaysOnMarket';
+            const isAbsolute = this.activeMetric === 'homeValue' || this.activeMetric === 'rentValue' || 
+                               this.activeMetric === 'medianSalePrice' || this.activeMetric === 'rentPerSqft';
+            const isSequential = this.activeMetric === 'homeDaysOnMarket' || this.activeMetric === 'rentDaysOnMarket' ||
+                                 this.activeMetric === 'activeInventory' || this.activeMetric === 'newListings' || 
+                                 this.activeMetric === 'salesCount';
             
             if (isAbsolute) {
                 min = p5;
                 max = p95;
-                if (this.activeMetric === 'rentValue') {
+                if (this.activeMetric === 'rentValue' || this.activeMetric === 'rentPerSqft') {
                     min = 0;
                 }
-            } else if (isDOM) {
+            } else if (isSequential) {
                 min = 0;
                 max = p95;
             } else {
-                const maxAbs = Math.max(Math.abs(p5), Math.abs(p95));
-                min = -maxAbs;
-                max = maxAbs;
+                // Growth and percentages (homeValueForecast, saleToListRatio, etc.)
+                let center = 0.0;
+                if (this.activeMetric === 'saleToListRatio') {
+                    center = 1.0;
+                } else if (this.activeMetric === 'homeValueForecast' || this.activeMetric.endsWith('Growth')) {
+                    center = 0.0;
+                } else {
+                    center = vals.reduce((sum, v) => sum + v, 0) / vals.length;
+                }
+                
+                const maxDiff = Math.max(Math.abs(p5 - center), Math.abs(p95 - center));
+                min = center - maxDiff;
+                max = center + maxDiff;
             }
         } else {
             min = 0; max = 1;
@@ -538,10 +562,18 @@ export class MapManager {
         this.currentMax = max;
 
         let mid = 0;
-        if (this.activeMetric === 'homeValue') {
+        if (this.activeMetric === 'homeValue' || this.activeMetric === 'medianSalePrice') {
             mid = this.metricsData.national_avg;
         } else if (this.activeMetric === 'rentValue') {
             mid = this.metricsData.rent_avg || 2000;
+        } else if (this.activeMetric === 'rentPerSqft') {
+            mid = (this.metricsData.rent_avg || 2000) / 1200;
+        } else if (this.activeMetric === 'saleToListRatio') {
+            mid = 1.0;
+        } else if (this.activeMetric === 'homeValueForecast' || this.activeMetric.endsWith('Growth')) {
+            mid = 0.0;
+        } else {
+            mid = vals.length > 0 ? vals.reduce((sum, v) => sum + v, 0) / vals.length : 0.5;
         }
         this.currentMid = mid;
 
@@ -621,20 +653,7 @@ export class MapManager {
                     regionName = feature.properties.NAME || feature.properties.name || key;
                 }
 
-                let metricName = 'Home Value';
-                let isGrowth = false;
-                if (this.activeMetric === 'homeValue') { metricName = 'Home Value'; }
-                if (this.activeMetric === 'homeYoyGrowth') { metricName = 'Home Value Growth (YoY)'; isGrowth = true; }
-                if (this.activeMetric === 'homeFiveYearGrowth') { metricName = 'Home Value Growth (5-Year)'; isGrowth = true; }
-                if (this.activeMetric === 'homeMomGrowth') { metricName = 'Home Value Growth (MoM)'; isGrowth = true; }
-                if (this.activeMetric === 'rentValue') { metricName = 'Monthly Rent'; }
-                if (this.activeMetric === 'rentYoyGrowth') { metricName = 'Rent Growth (YoY)'; isGrowth = true; }
-                if (this.activeMetric === 'rentFiveYearGrowth') { metricName = 'Rent Growth (5-Year)'; isGrowth = true; }
-                if (this.activeMetric === 'rentMomGrowth') { metricName = 'Rent Growth (MoM)'; isGrowth = true; }
-                if (this.activeMetric === 'homeDaysOnMarket') { metricName = 'Days on Market'; }
-                if (this.activeMetric === 'rentDaysOnMarket') { metricName = 'Days on Market (Simulated)'; }
-
-                this.tooltip.show(this.activeLevel, key, val, regionName, state, metricName, isGrowth);
+                this.tooltip.show(this.activeLevel, key, val, regionName, state, this.activeMetric);
             },
             mouseout: (e: any) => {
                 if (this.geoJsonLayer) {
