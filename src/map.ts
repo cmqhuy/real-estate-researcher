@@ -61,6 +61,7 @@ export class MapManager {
     
     private onScaleUpdateCallback: ((min: number, max: number, mid: number) => void) | null = null;
     private tileLayer: L.TileLayer;
+    private labelLayer: L.TileLayer;
     private currentTheme: string;
 
     private stateNameToCode: Record<string, string> = {
@@ -94,17 +95,33 @@ export class MapManager {
         // Add zoom control to top right
         L.control.zoom({ position: 'topright' }).addTo(this.map);
 
-        // CartoDB base tiles based on theme
-        const tileUrl = this.currentTheme === 'light' 
-            ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        // Create a custom pane for map text labels to overlay on top of choropleth polygons
+        const labelPane = this.map.createPane('labels');
+        labelPane.style.zIndex = '650'; // overlayPane (polygons) is 400, popups is 700. Labels sit in between
+        labelPane.style.pointerEvents = 'none';
+
+        // CartoDB base tiles (without labels)
+        const baseUrl = this.currentTheme === 'light' 
+            ? 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
             
-        this.tileLayer = L.tileLayer(tileUrl, {
+        this.tileLayer = L.tileLayer(baseUrl, {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
             maxZoom: 19,
             updateWhenIdle: false,
             keepBuffer: 4
+        }).addTo(this.map);
+
+        // CartoDB label tiles (overlay)
+        const labelUrl = this.currentTheme === 'light'
+            ? 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png';
+
+        this.labelLayer = L.tileLayer(labelUrl, {
+            subdomains: 'abcd',
+            maxZoom: 19,
+            pane: 'labels'
         }).addTo(this.map);
         
         this.geoJsonLayer = L.geoJSON(undefined, {
@@ -124,11 +141,16 @@ export class MapManager {
         if (this.currentTheme === theme) return;
         this.currentTheme = theme;
         
-        const tileUrl = theme === 'light' 
-            ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        const baseUrl = theme === 'light' 
+            ? 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
+
+        const labelUrl = theme === 'light'
+            ? 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png';
             
-        this.tileLayer.setUrl(tileUrl);
+        this.tileLayer.setUrl(baseUrl);
+        this.labelLayer.setUrl(labelUrl);
         
         // Only border color changes with theme — no need to rebuild color cache
         this.applyColorCache();
