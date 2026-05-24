@@ -29,6 +29,15 @@ jobs:
           npm run fetch-real-estate-data
           npm run fetch-geo-data
 
+      - name: Run Unit Tests
+        run: npm run test
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E Tests
+        run: npm run test:e2e
+
       - name: Commit and Push Updated Data
         run: |
           git config --global user.name "github-actions[bot]"

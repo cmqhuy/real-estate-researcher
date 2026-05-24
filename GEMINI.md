@@ -8,6 +8,7 @@ A Vite + TypeScript interactive map for visualizing US real estate metrics by ge
 
 - **Frontend**: Vite + TypeScript, Leaflet.js, Vanilla CSS
 - **Data scripts**: Node.js (ESM), csv-parser, https (built-in)
+- **Testing**: Vitest + Happy DOM (unit), Playwright (E2E)
 - **Fonts**: Inter (Google Fonts)
 - **Map tiles**: CartoDB (dark & light themes)
 
@@ -33,9 +34,13 @@ real-estate-researcher/
 │   │       └── {state}_country_geodata_{YYYYMMDD}.json # GeoJSON National US state boundaries
 │   ├── favicon.svg
 │   └── icons.svg
+├── vitest.config.ts            # Vitest unit test config (happy-dom env)
+├── playwright.config.ts        # Playwright E2E test config (5 browser projects)
 ├── scripts/
 │   ├── fetch_real_estate_data.js   # Downloads multi-level Zillow CSVs, outputs consolidated JSON
 │   └── fetch_geo_data.js           # Downloads and filters geodata boundaries per supported state
+├── tests/
+│   └── app.spec.ts             # Playwright E2E tests (app load, metrics, levels, search, mobile)
 └── src/
     ├── main.ts         # App entry: wires sidebar, map, level selector, search, legend, theme
     ├── map.ts          # MapManager: level/metric loading, color rendering, bounds calculation
@@ -44,7 +49,11 @@ real-estate-researcher/
     ├── sidebar.ts      # SidebarManager: handles metric radio button selection
     ├── search.ts       # SearchManager: location search, flies map to result
     ├── tooltip.ts      # TooltipManager: hover tooltip formatting for each geographic level
-    └── style.css       # All styles (dark/light theme, level selector layouts)
+    ├── style.css       # All styles (dark/light theme, level selector layouts)
+    ├── colors.test.ts  # Unit tests: color scale mapping
+    ├── legend.test.ts  # Unit tests: legend DOM updates
+    ├── sidebar.test.ts # Unit tests: sidebar selections
+    └── tooltip.test.ts # Unit tests: tooltip formatting
 ```
 
 ---
@@ -71,6 +80,8 @@ Tracks supported states and YYYYMMDD versions of metrics and geodata:
 - `npm run fetch-real-estate-data` — Downloads Zillow CSVs (ZHVI, ZORI, DOM) for all levels, processes into a consolidated per-state metrics JSON in `public/data/`, and updates `manifest.json`.
 - `npm run fetch-geo-data` — Downloads national boundaries for states, counties, and metros, filters them down to supported states, saves them as level-specific JSON files in `public/data/geodata/`, and updates `manifest.json`.
 - `npm run dev` — Starts Vite dev server.
+- `npm run test` — Runs Vitest unit tests (14 tests across 4 files).
+- `npm run test:e2e` — Runs Playwright E2E tests (6 specs × 5 browser projects = 30 tests).
 
 ### Data Sources
 Zillow CSV datasets are queried at State, Metro, County, and Zip levels:
@@ -134,3 +145,26 @@ Geodata is loaded dynamically and cached on the client to avoid redundant networ
 - State name mapping matches Zillow full names to state codes (e.g. `"Texas"` -> `"TX"`).
 - County FIPS codes are created by combining state FIPS and municipal FIPS codes (e.g., `'48' + '201' = '48201'`), which match the county GeoJSON properties (`STATE + COUNTY`).
 - Metros are matched by cleaning `NAME` properties in CBSA GeoJSON (removing " Metro Area" / " Micro Area") to match Zillow's region names.
+
+---
+
+## Testing
+
+### Unit Tests (Vitest + Happy DOM)
+Run with `npm run test`. Tests are co-located in `src/` next to their modules:
+- **colors.test.ts** — Color scale mapping, diverging scales, percentile boundaries
+- **tooltip.test.ts** — Adaptive tooltip headers and value formatting per level
+- **sidebar.test.ts** — Metric radio selection events and callback firing
+- **legend.test.ts** — Legend DOM element updates for title, min/mid/max labels
+
+### E2E Tests (Playwright)
+Run with `npm run test:e2e`. Specs live in `tests/app.spec.ts` and run across 5 browser projects: Chromium, Firefox, WebKit, Mobile Chrome (Pixel 5), Mobile Safari (iPhone 12).
+- **App load** — Title, map container, search box, level selector, legend visible
+- **Metric switching** — Sidebar selection updates legend title; on mobile, opens drawer first
+- **Level switching** — Geographic level buttons toggle active state
+- **State switching** — State selector changes state value
+- **Search** — Typing shows search suggestions
+- **Mobile drawer** — Menu toggle opens/closes sidebar drawer; metric selection auto-closes drawer
+
+### CI Integration
+The GitHub Actions workflow (`.github/workflows/weekly-update.yml`) runs both `npm run test` and `npm run test:e2e` before deploying. If any test fails, the pipeline terminates and the broken build is **not** deployed to `gh-pages`.
