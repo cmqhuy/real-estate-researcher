@@ -55,9 +55,15 @@ real-estate-researcher/
 Tracks supported states and YYYYMMDD versions of metrics and geodata:
 ```json
 {
-  "supportedStates": ["TX"],
-  "metricsVersions": { "TX": "20260523" },
-  "geodataVersions": { "TX": "20260523" }
+  "supportedStates": ["TX", "WA"],
+  "metricsVersions": {
+    "TX": "20260523",
+    "WA": "20260523"
+  },
+  "geodataVersions": {
+    "TX": "20260523",
+    "WA": "20260523"
+  }
 }
 ```
 
@@ -80,14 +86,16 @@ If either is outdated, the app shows a downloading overlay, calls the `/api/refr
 
 ---
 
-## Geographic Levels
+## Geographic Levels & State Switching
 
-The app supports visualizing data at the following geographic levels, toggled from the top controls bar:
-1. `country` (United States): Displays all US states colored by their state metrics (for national context).
-2. `state` (State): Displays the supported state (e.g. Texas) as a single boundary.
-3. `metro` (Metropolitan Area): Displays CBSA boundaries in the state.
-4. `county` (County): Displays county boundaries in the state.
-5. `zip` (ZIP Code): Displays ZIP code boundaries in the state.
+The top controls bar contains two main pill components to filter the map view:
+1. **State Selector**: Toggles the active state (e.g. `Texas (TX)` or `Washington (WA)`). Switching the state loads the chosen state's Zillow metrics and active level's boundary geodata (using client cache if available), and flies the map view to the center of the selected state.
+2. **Geographic Level Buttons**: Switches the active visualization level:
+   - `country` (United States): Displays all US states colored by their state metrics (for national context).
+   - `state` (State): Displays the supported state as a single boundary.
+   - `metro` (Metropolitan Area): Displays CBSA boundaries in the state.
+   - `county` (County): Displays county boundaries in the state.
+   - `zip` (ZIP Code): Displays ZIP code boundaries in the state.
 
 Geodata is loaded dynamically and cached on the client to avoid redundant network requests.
 
