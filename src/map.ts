@@ -50,8 +50,10 @@ export class MapManager {
     private loadingCount = 0;
     private manifest: ManifestData | null = null;
 
-    // Cache of loaded level geodata: level -> GeoJSON object
+    // Cache of loaded level geodata: state_level -> GeoJSON object
     private geodataCache: Map<string, any> = new Map();
+    private activeState = 'TX';
+    private metricsDataCache: Map<string, MetricsData> = new Map();
 
     // Pre-computed color cache: regionKey -> fillColor string
     private colorCache: Map<string, string> = new Map();
@@ -176,15 +178,16 @@ export class MapManager {
         this.setLoading(true);
         try {
             // Check cache first
-            let geodata = this.geodataCache.get(level);
+            const cacheKey = `${this.activeState}_${level}`;
+            let geodata = this.geodataCache.get(cacheKey);
             if (!geodata && this.manifest) {
-                const stateCode = 'TX'; // Demo state
+                const stateCode = this.activeState;
                 const geodataVersion = this.manifest.geodataVersions[stateCode];
                 const filename = `${stateCode.toLowerCase()}_${level}_geodata_${geodataVersion}.json`;
                 const res = await fetch(`${BASE_URL}data/geodata/${filename}`);
                 if (!res.ok) throw new Error(`Failed to load ${level} geodata`);
                 geodata = await res.json();
-                this.geodataCache.set(level, geodata);
+                this.geodataCache.set(cacheKey, geodata);
             }
 
             if (geodata && this.geoJsonLayer) {
@@ -201,6 +204,82 @@ export class MapManager {
             this.applyColorCache();
         } catch (error) {
             console.error(`Error switching to level ${level}:`, error);
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
+    async setStateCode(stateCode: string) {
+        if (this.activeState === stateCode) return;
+        this.activeState = stateCode;
+
+        // Clear existing features
+        if (this.geoJsonLayer) {
+            this.geoJsonLayer.clearLayers();
+        }
+
+        this.setLoading(true);
+        try {
+            // Load metrics for the new state (use cache if available)
+            let metricsData = this.metricsDataCache.get(stateCode);
+            if (!metricsData && this.manifest) {
+                const metricsVersion = this.manifest.metricsVersions[stateCode];
+                if (!metricsVersion) throw new Error(`Missing metrics version for state ${stateCode}`);
+                
+                const metricsFilename = `${stateCode.toLowerCase()}_metrics_${metricsVersion}.json`;
+                const res = await fetch(`${BASE_URL}data/${metricsFilename}`);
+                if (!res.ok) throw new Error(`Failed to load metrics for ${stateCode}`);
+                
+                const rawData = await res.json() as any;
+                if (!rawData.levels) {
+                    rawData.levels = {
+                        zip: rawData.data || {},
+                        county: {},
+                        metro: {},
+                        state: {},
+                        country: {}
+                    };
+                }
+                metricsData = rawData as MetricsData;
+                this.metricsDataCache.set(stateCode, metricsData);
+            }
+
+            if (metricsData) {
+                this.metricsData = metricsData;
+            }
+
+            // Load geodata for active level for the new state (use cache if available)
+            const cacheKey = `${stateCode}_${this.activeLevel}`;
+            let geodata = this.geodataCache.get(cacheKey);
+            if (!geodata && this.manifest) {
+                const geodataVersion = this.manifest.geodataVersions[stateCode];
+                if (!geodataVersion) throw new Error(`Missing geodata version for state ${stateCode}`);
+                
+                const geodataFilename = `${stateCode.toLowerCase()}_${this.activeLevel}_geodata_${geodataVersion}.json`;
+                const res = await fetch(`${BASE_URL}data/geodata/${geodataFilename}`);
+                if (!res.ok) throw new Error(`Failed to load ${this.activeLevel} geodata for ${stateCode}`);
+                
+                geodata = await res.json();
+                this.geodataCache.set(cacheKey, geodata);
+            }
+
+            if (geodata && this.geoJsonLayer) {
+                this.geoJsonLayer.addData(geodata);
+                
+                // Fly to the new state's center
+                if (stateCode === 'WA') {
+                    this.flyTo(47.4009, -121.4905, 7);
+                } else {
+                    // Default to TX center
+                    this.flyTo(31.9686, -99.9018, 6);
+                }
+            }
+
+            this.updateScaleBounds();
+            this.applyColorCache();
+
+        } catch (error) {
+            console.error(`Error switching to state ${stateCode}:`, error);
         } finally {
             this.setLoading(false);
         }
@@ -331,7 +410,8 @@ export class MapManager {
             const geodata = await geodataRes.json();
 
             this.metricsData = metricsData;
-            this.geodataCache.set(this.activeLevel, geodata);
+            this.metricsDataCache.set(stateCode, metricsData);
+            this.geodataCache.set(`${stateCode}_${this.activeLevel}`, geodata);
             this.loadedStates.add(stateCode);
 
             this.updateScaleBounds();

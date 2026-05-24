@@ -197,6 +197,35 @@ body {
 }
 
 /* Level Selector */
+/* State Selector */
+.state-selector-container {
+  display: flex;
+  background-color: var(--color-bg-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0.25rem 0.75rem;
+  box-shadow: var(--shadow-lg);
+  align-items: center;
+}
+
+.state-select {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  cursor: pointer;
+  outline: none;
+  padding: 0.35rem 0.5rem;
+  font-family: var(--font-family);
+}
+
+.state-select option {
+  background-color: var(--color-bg-sidebar);
+  color: var(--color-text-main);
+}
+
 .level-selector {
   display: flex;
   background-color: var(--color-bg-glass);

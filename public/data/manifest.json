@@ -1,11 +1,14 @@
 {
   "supportedStates": [
-    "TX"
+    "TX",
+    "WA"
   ],
   "metricsVersions": {
-    "TX": "20260523"
+    "TX": "20260523",
+    "WA": "20260523"
   },
   "geodataVersions": {
-    "TX": "20260523"
+    "TX": "20260523",
+    "WA": "20260523"
   }
 }

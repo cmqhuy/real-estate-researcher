@@ -65,3 +65,12 @@ levelButtons.forEach(btn => {
     });
 });
 
+// Wire State Selector
+const stateSelect = document.getElementById('state-select') as HTMLSelectElement;
+stateSelect?.addEventListener('change', () => {
+    const stateCode = stateSelect.value;
+    if (stateCode) {
+        mapManager.setStateCode(stateCode);
+    }
+});
+
