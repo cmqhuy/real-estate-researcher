@@ -26,11 +26,12 @@ export class LegendManager {
         this.midEl.textContent = format(midpoint);
         this.maxEl.textContent = format(max);
 
-        const isSequential = def ? def.scaleType === 'sequential' : false;
-        if (isSequential) {
+        const scaleType = def ? def.scaleType : 'diverging';
+        this.gradientEl.classList.remove('sequential', 'sequential-blue');
+        if (scaleType === 'sequential') {
             this.gradientEl.classList.add('sequential');
-        } else {
-            this.gradientEl.classList.remove('sequential');
+        } else if (scaleType === 'sequential-blue') {
+            this.gradientEl.classList.add('sequential-blue');
         }
     }
 }

@@ -95,9 +95,16 @@ describe('LegendManager', () => {
         // 1. activeInventory is sequential
         legend.update('activeInventory', 50, 1500, 750);
         expect(gradient.classList.contains('sequential')).toBe(true);
+        expect(gradient.classList.contains('sequential-blue')).toBe(false);
 
-        // 2. homeValue is diverging
+        // 2. pctSalesBelowList is sequential-blue
+        legend.update('pctSalesBelowList', 0.1, 0.9, 0.5);
+        expect(gradient.classList.contains('sequential-blue')).toBe(true);
+        expect(gradient.classList.contains('sequential')).toBe(false);
+
+        // 3. homeValue is diverging
         legend.update('homeValue', 100000, 500000, 300000);
         expect(gradient.classList.contains('sequential')).toBe(false);
+        expect(gradient.classList.contains('sequential-blue')).toBe(false);
     });
 });

@@ -6,7 +6,7 @@ export interface MetricDefinition {
     description: string;
     icon: string;
     category: 'home' | 'market' | 'investor';
-    scaleType: 'sequential' | 'diverging';
+    scaleType: 'sequential' | 'sequential-blue' | 'diverging';
     format: 'currency' | 'currency-cents' | 'percent' | 'percent-raw' | 'days' | 'count';
     midpointType: 'national-avg' | 'rent-avg' | 'rent-sqft-avg' | 'zero' | 'one' | 'level-mean';
     supportedLevels: GeographicLevel[];
@@ -228,7 +228,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
         description: 'Percentage of homes sold below their initial listing price.',
         icon: '🔻',
         category: 'market',
-        scaleType: 'sequential',
+        scaleType: 'sequential-blue',
         format: 'percent',
         midpointType: 'level-mean',
         supportedLevels: ['zip', 'county', 'metro', 'state', 'country']

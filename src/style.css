@@ -408,6 +408,10 @@ body {
   background: linear-gradient(to right, var(--color-map-neutral), var(--color-map-positive));
 }
 
+.legend-gradient.sequential-blue {
+  background: linear-gradient(to right, var(--color-map-neutral), var(--color-map-negative));
+}
+
 .legend-labels {
   display: flex;
   justify-content: space-between;

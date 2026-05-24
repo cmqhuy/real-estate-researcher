@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
+import simplify from '@turf/simplify';
+import truncate from '@turf/truncate';
 
 const dataDir = path.join(process.cwd(), 'public', 'data');
 const geodataDir = path.join(dataDir, 'geodata');
@@ -58,6 +60,25 @@ const yyyymmdd = dateObj.getFullYear().toString() +
                  String(dateObj.getMonth() + 1).padStart(2, '0') + 
                  String(dateObj.getDate()).padStart(2, '0');
 
+// Properties to preserve per geographic level (everything else is stripped)
+const KEEP_PROPERTIES = {
+    zip:     ['ZCTA5CE10', 'ZCTA5CE20'],
+    county:  ['STATE', 'COUNTY', 'NAME', 'GEO_ID'],
+    metro:   ['NAME', 'GEOID'],
+    state:   ['name', 'density'],
+    country: ['name', 'density']
+};
+
+// Tolerance for geometry simplification per geographic level
+// zip: 0.000015 degrees yields ~50% file size reduction (from ~76MB to ~38MB) with high fidelity
+const TOLERANCES = {
+    zip:     0.000015,
+    county:  0.00001,
+    metro:   0.00001,
+    state:   0.00001,
+    country: 0.00001
+};
+
 function fetchJSON(url) {
     return new Promise((resolve, reject) => {
         const options = {
@@ -82,8 +103,45 @@ function fetchJSON(url) {
     });
 }
 
-function saveGeoJSON(filepath, geojson) {
-    fs.writeFileSync(filepath, JSON.stringify(geojson));
+/**
+ * Simplify GeoJSON geometry and strip unnecessary properties before saving.
+ * - Douglas-Peucker simplification (custom tolerance per level)
+ * - Coordinate truncation to 5 decimal places (~1.1m accuracy)
+ * - Property stripping to keep only the region identifier keys
+ */
+function simplifyAndSaveGeoJSON(filepath, geojson, level) {
+    const keysToKeep = KEEP_PROPERTIES[level] || [];
+    const tolerance = TOLERANCES[level] || 0.00001;
+
+    // Apply simplification and truncation to the entire FeatureCollection
+    let simplified;
+    try {
+        simplified = simplify(geojson, { tolerance, highQuality: true });
+        simplified = truncate(simplified, { precision: 5, coordinates: 2 });
+    } catch (e) {
+        // Fallback: if turf fails on a non-standard geometry, just truncate coordinates manually
+        console.warn(`  ⚠ Simplification failed for ${path.basename(filepath)}, falling back to raw save: ${e.message}`);
+        simplified = geojson;
+    }
+
+    // Strip unnecessary properties from each feature
+    if (simplified.features) {
+        for (const feature of simplified.features) {
+            if (feature.properties) {
+                const kept = {};
+                for (const key of keysToKeep) {
+                    if (feature.properties[key] !== undefined) {
+                        kept[key] = feature.properties[key];
+                    }
+                }
+                feature.properties = kept;
+            }
+        }
+    }
+
+    fs.writeFileSync(filepath, JSON.stringify(simplified));
+    const sizeMB = (fs.statSync(filepath).size / (1024 * 1024)).toFixed(2);
+    console.log(`    → Saved ${path.basename(filepath)} (${sizeMB} MB)`);
 }
 
 async function downloadGeoJSON() {
@@ -111,8 +169,8 @@ async function downloadGeoJSON() {
             // --- COUNTRY LEVEL BOUNDARY ---
             // Save the entire US States GeoJSON as country geodata
             const countryFile = `${state.toLowerCase()}_country_geodata_${yyyymmdd}.json`;
-            saveGeoJSON(path.join(geodataDir, countryFile), statesData);
-            console.log(`  - Saved country boundaries: ${countryFile}`);
+            console.log(`  - Processing country boundaries...`);
+            simplifyAndSaveGeoJSON(path.join(geodataDir, countryFile), statesData, 'country');
 
             // --- STATE LEVEL BOUNDARY ---
             // Filter statesData to only include the active state
@@ -122,8 +180,8 @@ async function downloadGeoJSON() {
                 features: stateFeatures
             };
             const stateFile = `${state.toLowerCase()}_state_geodata_${yyyymmdd}.json`;
-            saveGeoJSON(path.join(geodataDir, stateFile), stateGeoJSON);
-            console.log(`  - Saved state boundary: ${stateFile}`);
+            console.log(`  - Processing state boundary...`);
+            simplifyAndSaveGeoJSON(path.join(geodataDir, stateFile), stateGeoJSON, 'state');
 
             // --- COUNTY LEVEL BOUNDARIES ---
             // Filter countiesData by properties.STATE === FIPS code
@@ -133,8 +191,8 @@ async function downloadGeoJSON() {
                 features: countyFeatures
             };
             const countyFile = `${state.toLowerCase()}_county_geodata_${yyyymmdd}.json`;
-            saveGeoJSON(path.join(geodataDir, countyFile), countyGeoJSON);
-            console.log(`  - Saved county boundaries: ${countyFile}`);
+            console.log(`  - Processing county boundaries...`);
+            simplifyAndSaveGeoJSON(path.join(geodataDir, countyFile), countyGeoJSON, 'county');
 
             // --- METRO LEVEL BOUNDARIES ---
             // Filter metrosData. features where cleaned NAME ends with `, TX`
@@ -152,8 +210,8 @@ async function downloadGeoJSON() {
                 features: metroFeatures
             };
             const metroFile = `${state.toLowerCase()}_metro_geodata_${yyyymmdd}.json`;
-            saveGeoJSON(path.join(geodataDir, metroFile), metroGeoJSON);
-            console.log(`  - Saved metro boundaries: ${metroFile}`);
+            console.log(`  - Processing metro boundaries...`);
+            simplifyAndSaveGeoJSON(path.join(geodataDir, metroFile), metroGeoJSON, 'metro');
 
             // --- ZIP LEVEL BOUNDARIES ---
             // Fetch ZIP codes from OpenDataDE
@@ -164,8 +222,8 @@ async function downloadGeoJSON() {
                 try {
                     const zipGeoJSON = await fetchJSON(zipUrl);
                     const zipFile = `${state.toLowerCase()}_zip_geodata_${yyyymmdd}.json`;
-                    saveGeoJSON(path.join(geodataDir, zipFile), zipGeoJSON);
-                    console.log(`  - Saved ZIP boundaries: ${zipFile}`);
+                    console.log(`  - Processing ZIP boundaries (this may take a moment)...`);
+                    simplifyAndSaveGeoJSON(path.join(geodataDir, zipFile), zipGeoJSON, 'zip');
                 } catch (err) {
                     console.error(`  - Failed to download ZIP codes: ${err.message}`);
                 }

@@ -27,13 +27,18 @@ export function getColor(value: number | null, min: number, max: number, metric:
     if (value === null || value === undefined) return 'rgba(0,0,0,0)'; // Transparent if no data
     
     const def = METRIC_DEFINITIONS[metric];
-    const isSequential = def ? def.scaleType === 'sequential' : false;
-    
-    if (isSequential) {
+    if (def && def.scaleType === 'sequential') {
         // 0 to max sequential scale (White -> Red)
         const maxVal = max || 1;
         const factor = Math.min(1, Math.max(0, value / maxVal));
         return interpolateColor(COLORS.neutral, COLORS.positive, factor);
+    }
+
+    if (def && def.scaleType === 'sequential-blue') {
+        // 0 to max sequential scale (White -> Blue)
+        const maxVal = max || 1;
+        const factor = Math.min(1, Math.max(0, value / maxVal));
+        return interpolateColor(COLORS.neutral, COLORS.negative, factor);
     }
     
     // Diverging scale (Blue -> White -> Red) centered around mid
