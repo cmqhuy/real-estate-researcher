@@ -19,13 +19,13 @@ describe('getColor', () => {
         const lowColor = getColor(200000, min, max, 'homeValue', mid);
         expect(lowColor).toContain('rgb');
         // Extract RGB values
-        const [r, g, b] = lowColor.match(/\d+/g)!.map(Number);
+        const [r, , b] = lowColor.match(/\d+/g)!.map(Number);
         expect(b).toBeGreaterThan(r); // Blue bias
 
         // Above average should have red bias
         const highColor = getColor(400000, min, max, 'homeValue', mid);
         expect(highColor).toContain('rgb');
-        const [r2, g2, b2] = highColor.match(/\d+/g)!.map(Number);
+        const [r2, , b2] = highColor.match(/\d+/g)!.map(Number);
         expect(r2).toBeGreaterThan(b2); // Red bias
     });
 
@@ -35,12 +35,12 @@ describe('getColor', () => {
 
         // Negative growth should be blue bias
         const negColor = getColor(-0.05, min, max, 'homeYoyGrowth', 0);
-        const [r, g, b] = negColor.match(/\d+/g)!.map(Number);
+        const [r, , b] = negColor.match(/\d+/g)!.map(Number);
         expect(b).toBeGreaterThan(r);
 
         // Positive growth should be red bias
         const posColor = getColor(0.05, min, max, 'homeYoyGrowth', 0);
-        const [r2, g2, b2] = posColor.match(/\d+/g)!.map(Number);
+        const [r2, , b2] = posColor.match(/\d+/g)!.map(Number);
         expect(r2).toBeGreaterThan(b2);
     });
 
@@ -50,13 +50,13 @@ describe('getColor', () => {
         const max = 60;
 
         const lowDOM = getColor(5, min, max, 'homeDaysOnMarket', 30);
-        const [r1, g1, b1] = lowDOM.match(/\d+/g)!.map(Number);
+        const [r1, g1] = lowDOM.match(/\d+/g)!.map(Number);
         // Should be close to white (247, 247, 247)
         expect(r1).toBeCloseTo(247, -2);
         expect(g1).toBeCloseTo(247, -2);
 
         const highDOM = getColor(55, min, max, 'homeDaysOnMarket', 30);
-        const [r2, g2, b2] = highDOM.match(/\d+/g)!.map(Number);
+        const [r2, , b2] = highDOM.match(/\d+/g)!.map(Number);
         // Should be red bias
         expect(r2).toBeGreaterThan(b2);
     });

@@ -11,7 +11,12 @@ test.describe('Real Estate Researcher App', () => {
         // Listen to console and page errors to catch crashes
         page.on('console', msg => {
             if (msg.type() === 'error') {
-                consoleErrors.push(msg.text());
+                const text = msg.text();
+                // Ignore network/tile resource loading errors as they can flake on CI due to rate limiting
+                if (text.includes('Failed to load resource') || text.includes('cartocdn') || text.includes('tile')) {
+                    return;
+                }
+                consoleErrors.push(text);
             }
         });
         page.on('pageerror', exception => {
@@ -27,6 +32,7 @@ test.describe('Real Estate Researcher App', () => {
 
     test('should load app, render map, and hide loading overlay', async ({ page }) => {
         await page.goto('./');
+        await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
         
         // Assert title
         await expect(page).toHaveTitle('Real Estate Researcher');
@@ -51,6 +57,7 @@ test.describe('Real Estate Researcher App', () => {
 
     test('should switch metrics and update legend', async ({ page }) => {
         await page.goto('./');
+        await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
 
         // On mobile, the sidebar drawer is hidden by default. If the menu toggle is visible, open the drawer.
         const menuToggle = page.locator('#menu-toggle');
@@ -74,6 +81,7 @@ test.describe('Real Estate Researcher App', () => {
 
     test('should switch geographic levels', async ({ page }) => {
         await page.goto('./');
+        await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
 
         const countyBtn = page.locator('.level-btn[data-level="county"]');
         await countyBtn.click();
@@ -90,6 +98,7 @@ test.describe('Real Estate Researcher App', () => {
 
     test('should switch states and center map', async ({ page }) => {
         await page.goto('./');
+        await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
 
         const stateSelect = page.locator('#state-select');
         await stateSelect.selectOption('WA');
@@ -100,6 +109,7 @@ test.describe('Real Estate Researcher App', () => {
 
     test('should show search suggestions', async ({ page }) => {
         await page.goto('./');
+        await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
 
         const searchInput = page.locator('#location-search');
         await searchInput.fill('Dallas');
@@ -118,6 +128,7 @@ test.describe('Real Estate Researcher App', () => {
 
         test('should toggle sidebar drawer and consolidate metrics change', async ({ page }) => {
             await page.goto('./');
+            await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
 
             const sidebar = page.locator('.sidebar');
             const menuToggle = page.locator('#menu-toggle');

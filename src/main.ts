@@ -49,15 +49,7 @@ mapManager.onScaleUpdate((min, max, mid) => {
     legend.update(sidebar.getActiveMetric(), min, max, mid);
 });
 
-// Add loading overlay to the document
-const loadingOverlay = document.createElement('div');
-loadingOverlay.id = 'loading-overlay';
-loadingOverlay.className = 'loading-overlay hidden';
-loadingOverlay.innerHTML = `
-    <div class="spinner"></div>
-    <div>Loading Data...</div>
-`;
-document.body.appendChild(loadingOverlay);
+// Loading overlay is defined statically in index.html
 
 // Wire Level Selector
 const levelButtons = document.querySelectorAll('.level-btn');

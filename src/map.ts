@@ -306,8 +306,9 @@ export class MapManager {
             const res = await fetch(`${BASE_URL}data/manifest.json?t=${Date.now()}`);
             this.manifest = await res.json();
             
-            // Check if data is outdated (only in development environment)
-            if (this.manifest && import.meta.env.DEV) {
+            // Check if data is outdated (only in development environment, and not in automated tests)
+            const isTest = typeof window !== 'undefined' && (navigator.webdriver || window.location.search.includes('test=true'));
+            if (this.manifest && import.meta.env.DEV && !isTest) {
                 let outdated = false;
                 const now = new Date();
                 
