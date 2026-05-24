@@ -224,11 +224,11 @@ export class MapManager {
     private async initData() {
         this.setLoading(true);
         try {
-            const res = await fetch(`${BASE_URL}data/manifest.json`);
+            const res = await fetch(`${BASE_URL}data/manifest.json?t=${Date.now()}`);
             this.manifest = await res.json();
             
-            // Check if data is outdated
-            if (this.manifest) {
+            // Check if data is outdated (only in development environment)
+            if (this.manifest && import.meta.env.DEV) {
                 let outdated = false;
                 const now = new Date();
                 
@@ -319,6 +319,15 @@ export class MapManager {
             if (!geodataRes.ok) throw new Error(`Failed to load ${this.activeLevel} geodata for ${stateCode}`);
 
             const metricsData = await metricsRes.json();
+            if (!metricsData.levels) {
+                metricsData.levels = {
+                    zip: metricsData.data || {},
+                    county: {},
+                    metro: {},
+                    state: {},
+                    country: {}
+                };
+            }
             const geodata = await geodataRes.json();
 
             this.metricsData = metricsData;
