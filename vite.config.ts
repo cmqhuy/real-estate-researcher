@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { exec } from 'child_process';
 
 export default defineConfig({
+  base: '/real-estate-researcher/',
   plugins: [
     {
       name: 'data-refresh-plugin',
