@@ -1,170 +1,42 @@
 # Real Estate Researcher — Project Context
 
-A Vite + TypeScript interactive map for visualizing US real estate metrics by geographic levels. Data is sourced from Zillow Research and displayed as a choropleth map using Leaflet.js.
-
----
+A Vite + TypeScript interactive choropleth map visualizing US real estate metrics (Zillow data) with Leaflet.js.
 
 ## Tech Stack
-
-- **Frontend**: Vite + TypeScript, Leaflet.js, Vanilla CSS
-- **Data scripts**: Node.js (ESM), csv-parser, https (built-in)
-- **Testing**: Vitest + Happy DOM (unit), Playwright (E2E)
-- **Fonts**: Inter (Google Fonts)
-- **Map tiles**: CartoDB (dark & light themes)
-
----
+Vite + TypeScript, Leaflet.js, Vanilla CSS, Vitest + Happy DOM (unit), Playwright (E2E), Inter font, CartoDB tiles.
 
 ## Project Structure
-
 ```
 real-estate-researcher/
 ├── index.html                  # Main HTML — sidebar metric options + map + level selector
 ├── vite.config.ts              # Vite config with custom /api/refresh-data endpoint
-├── tsconfig.json
-├── package.json
-├── public/
-│   ├── data/
-│   │   ├── manifest.json                               # Tracks supported states + metrics & geodata versions
-│   │   ├── {state}_metrics_{YYYYMMDD}.json             # Zillow metrics per level (zip, county, metro, state, country)
-│   │   └── geodata/
-│   │       ├── {state}_zip_geodata_{YYYYMMDD}.json     # GeoJSON ZIP code boundaries
-│   │       ├── {state}_county_geodata_{YYYYMMDD}.json  # GeoJSON County boundaries
-│   │       ├── {state}_metro_geodata_{YYYYMMDD}.json   # GeoJSON Metro/CBSA boundaries
-│   │       ├── {state}_state_geodata_{YYYYMMDD}.json   # GeoJSON State outline boundaries
-│   │       └── {state}_country_geodata_{YYYYMMDD}.json # GeoJSON National US state boundaries
-│   ├── favicon.svg
-│   └── icons.svg
 ├── vitest.config.ts            # Vitest unit test config (happy-dom env)
 ├── playwright.config.ts        # Playwright E2E test config (5 browser projects)
+├── public/data/                # manifest.json + {state}_metrics_{YYYYMMDD}.json + geodata/
 ├── scripts/
-│   ├── fetch_real_estate_data.js   # Downloads multi-level Zillow CSVs, outputs consolidated JSON
-│   └── fetch_geo_data.js           # Downloads and filters geodata boundaries per supported state
+│   ├── fetch_real_estate_data.js   # Downloads Zillow CSVs → consolidated JSON per state
+│   └── fetch_geo_data.js           # Downloads + filters geodata boundaries per state
 ├── tests/
-│   └── app.spec.ts             # Playwright E2E tests (app load, metrics, levels, search, mobile)
+│   └── app.spec.ts             # Playwright E2E tests (6 specs × 5 browsers = 30 tests)
 └── src/
     ├── main.ts         # App entry: wires sidebar, map, level selector, search, legend, theme
-    ├── map.ts          # MapManager: level/metric loading, color rendering, bounds calculation
+    ├── map.ts          # MapManager: level/metric loading, color rendering, bounds, caching
     ├── colors.ts       # Color scale logic, MetricType and GeographicLevel definitions
     ├── legend.ts       # LegendManager: updates labels/title based on active metric
     ├── sidebar.ts      # SidebarManager: handles metric radio button selection
     ├── search.ts       # SearchManager: location search, flies map to result
-    ├── tooltip.ts      # TooltipManager: hover tooltip formatting for each geographic level
-    ├── style.css       # All styles (dark/light theme, level selector layouts)
-    ├── colors.test.ts  # Unit tests: color scale mapping
-    ├── legend.test.ts  # Unit tests: legend DOM updates
-    ├── sidebar.test.ts # Unit tests: sidebar selections
-    └── tooltip.test.ts # Unit tests: tooltip formatting
+    ├── tooltip.ts      # TooltipManager: hover tooltip formatting per geographic level
+    ├── style.css       # All styles (dark/light theme, responsive, level selector)
+    └── *.test.ts       # Unit tests: colors, legend, sidebar, tooltip (14 tests total)
 ```
 
----
+## Key Commands
+- `npm run dev` — Start Vite dev server
+- `npm run test` — 14 unit tests (Vitest)
+- `npm run test:e2e` — 30 E2E tests (Playwright, 5 browsers)
+- `npm run fetch-real-estate-data` / `npm run fetch-geo-data` — Refresh data from Zillow
 
-## Data Pipeline
-
-### manifest.json
-Tracks supported states and YYYYMMDD versions of metrics and geodata:
-```json
-{
-  "supportedStates": ["TX", "WA"],
-  "metricsVersions": {
-    "TX": "20260523",
-    "WA": "20260523"
-  },
-  "geodataVersions": {
-    "TX": "20260523",
-    "WA": "20260523"
-  }
-}
-```
-
-### npm scripts
-- `npm run fetch-real-estate-data` — Downloads Zillow CSVs (ZHVI, ZORI, DOM) for all levels, processes into a consolidated per-state metrics JSON in `public/data/`, and updates `manifest.json`.
-- `npm run fetch-geo-data` — Downloads national boundaries for states, counties, and metros, filters them down to supported states, saves them as level-specific JSON files in `public/data/geodata/`, and updates `manifest.json`.
-- `npm run dev` — Starts Vite dev server.
-- `npm run test` — Runs Vitest unit tests (14 tests across 4 files).
-- `npm run test:e2e` — Runs Playwright E2E tests (6 specs × 5 browser projects = 30 tests).
-
-### Data Sources
-Zillow CSV datasets are queried at State, Metro, County, and Zip levels:
-- **ZHVI** (Home Value, Growth): `https://files.zillowstatic.com/research/public_csvs/zhvi/{Level}_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv`
-- **ZORI** (Rent, Rent Growth): `https://files.zillowstatic.com/research/public_csvs/zori/{Level}_zori_uc_sfrcondomfr_sm_month.csv` (Note: State ZORI is unavailable and falls back to null).
-- **DOM** (Days on Market): `https://files.zillowstatic.com/research/public_csvs/mean_doz_pending/{Level}_mean_doz_pending_uc_sfrcondo_sm_month.csv`
-
-### Auto-refresh on startup
-On startup, `MapManager` compares the local time with the timestamps inside `manifest.json`:
-- **Metrics** are auto-refreshed if the metrics data version is **≥ 7 days old**.
-- **Geodata** is auto-refreshed if the geodata version is **≥ 30 days old**.
-If either is outdated, the app shows a downloading overlay, calls the `/api/refresh-data` dev server endpoint, and reloads on success.
-
----
-
-## Geographic Levels & State Switching
-
-The top controls bar contains two main pill components to filter the map view:
-1. **State Selector**: Toggles the active state (e.g. `Texas (TX)` or `Washington (WA)`). Switching the state loads the chosen state's Zillow metrics and active level's boundary geodata (using client cache if available), and flies the map view to the center of the selected state.
-2. **Geographic Level Buttons**: Switches the active visualization level:
-   - `country` (United States): Displays all US states colored by their state metrics (for national context).
-   - `state` (State): Displays the supported state as a single boundary.
-   - `metro` (Metropolitan Area): Displays CBSA boundaries in the state.
-   - `county` (County): Displays county boundaries in the state.
-   - `zip` (ZIP Code): Displays ZIP code boundaries in the state.
-
-Geodata is loaded dynamically and cached on the client to avoid redundant network requests.
-
----
-
-## Metrics
-
-| Metric key | Label (UI) | Source | Real Data? |
-|---|---|---|---|
-| `homeValue` | 🏠 Home Value | Zillow ZHVI | ✅ Real |
-| `homeFiveYearGrowth` | 📈 Home Value Growth (5-Year) | Zillow ZHVI | ✅ Real |
-| `homeYoyGrowth` | 📅 Home Value Growth (YoY) | Zillow ZHVI | ✅ Real |
-| `homeMomGrowth` | 📆 Home Value Growth (MoM) | Zillow ZHVI | ✅ Real |
-| `homeDaysOnMarket` | ⏱️ Days on Market | Zillow DOM | ✅ Real |
-| `rentValue` | 💵 Monthly Rent | Zillow ZORI | ✅ Real (Zip/County/Metro) / ⚠️ Null at State/Country |
-| `rentFiveYearGrowth` | 📊 Rent Growth (5-Year) | Zillow ZORI | ✅ Real (Zip/County/Metro) / ⚠️ Null at State/Country |
-| `rentYoyGrowth` | 📅 Rent Growth (YoY) | Zillow ZORI | ✅ Real (Zip/County/Metro) / ⚠️ Null at State/Country |
-| `rentMomGrowth` | 📆 Rent Growth (MoM) | Zillow ZORI | ✅ Real (Zip/County/Metro) / ⚠️ Null at State/Country |
-| `rentDaysOnMarket` | ⏱️ Days on Market (Simulated) | Derived from `homeDaysOnMarket` | ⚠️ Simulated |
-
----
-
-## Color Scale (colors.ts)
-
-- **Absolute metrics** (`homeValue`, `rentValue`): blue (min/0) → white (national/rent avg) → red (max)
-- **Growth metrics**: symmetric diverging — blue (most negative) → white (0%) → red (most positive)
-- **Days on Market**: white (0 days) → red (max days)
-- Scale bounds use **p5–p95 percentiles** to avoid outlier distortion. If the scale collapses (e.g. state level containing only one region), a synthetic +/- 20% range is created around the single data point.
-
----
-
-## Key Conventions
-
-- State codes are uppercase 2-letter abbreviations (e.g. `TX`).
-- File naming: `{state_lower}_{level}_geodata_{YYYYMMDD}.json` and `{state_lower}_metrics_{YYYYMMDD}.json`.
-- State name mapping matches Zillow full names to state codes (e.g. `"Texas"` -> `"TX"`).
-- County FIPS codes are created by combining state FIPS and municipal FIPS codes (e.g., `'48' + '201' = '48201'`), which match the county GeoJSON properties (`STATE + COUNTY`).
-- Metros are matched by cleaning `NAME` properties in CBSA GeoJSON (removing " Metro Area" / " Micro Area") to match Zillow's region names.
-
----
-
-## Testing
-
-### Unit Tests (Vitest + Happy DOM)
-Run with `npm run test`. Tests are co-located in `src/` next to their modules:
-- **colors.test.ts** — Color scale mapping, diverging scales, percentile boundaries
-- **tooltip.test.ts** — Adaptive tooltip headers and value formatting per level
-- **sidebar.test.ts** — Metric radio selection events and callback firing
-- **legend.test.ts** — Legend DOM element updates for title, min/mid/max labels
-
-### E2E Tests (Playwright)
-Run with `npm run test:e2e`. Specs live in `tests/app.spec.ts` and run across 5 browser projects: Chromium, Firefox, WebKit, Mobile Chrome (Pixel 5), Mobile Safari (iPhone 12).
-- **App load** — Title, map container, search box, level selector, legend visible
-- **Metric switching** — Sidebar selection updates legend title; on mobile, opens drawer first
-- **Level switching** — Geographic level buttons toggle active state
-- **State switching** — State selector changes state value
-- **Search** — Typing shows search suggestions
-- **Mobile drawer** — Menu toggle opens/closes sidebar drawer; metric selection auto-closes drawer
-
-### CI Integration
-The GitHub Actions workflow (`.github/workflows/weekly-update.yml`) runs both `npm run test` and `npm run test:e2e` before deploying. If any test fails, the pipeline terminates and the broken build is **not** deployed to `gh-pages`.
+## Detailed Docs (read on demand)
+- `docs/data-pipeline.md` — Data sources, manifest format, auto-refresh logic, file naming
+- `docs/metrics-and-colors.md` — Metric keys, color scales, geographic levels, key conventions
+- `docs/testing.md` — Test infrastructure, CI/CD workflows, E2E spec details
