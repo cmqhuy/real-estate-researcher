@@ -3,6 +3,7 @@ import type { MetricType, GeographicLevel } from './colors';
 export interface MetricDefinition {
     key: MetricType;
     title: string;
+    description: string;
     icon: string;
     category: 'home' | 'market' | 'investor';
     scaleType: 'sequential' | 'diverging';
@@ -15,6 +16,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     homeValue: {
         key: 'homeValue',
         title: 'Home Value',
+        description: 'Typical home value (ZHVI) - smoothed, seasonally adjusted index.',
         icon: '🏠',
         category: 'home',
         scaleType: 'diverging',
@@ -25,6 +27,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     homeYoyGrowth: {
         key: 'homeYoyGrowth',
         title: 'Home Value Growth (YoY)',
+        description: 'Year-over-year typical home value growth.',
         icon: '📅',
         category: 'home',
         scaleType: 'diverging',
@@ -35,6 +38,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     homeFiveYearGrowth: {
         key: 'homeFiveYearGrowth',
         title: 'Home Value Growth (5-Year)',
+        description: '5-year cumulative typical home value growth.',
         icon: '📈',
         category: 'home',
         scaleType: 'diverging',
@@ -45,6 +49,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     homeMomGrowth: {
         key: 'homeMomGrowth',
         title: 'Home Value Growth (MoM)',
+        description: 'Month-over-month typical home value growth.',
         icon: '📆',
         category: 'home',
         scaleType: 'diverging',
@@ -55,6 +60,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     homeValueForecast: {
         key: 'homeValueForecast',
         title: 'Home Value Forecast (1-Year)',
+        description: '1-year forecast of home value growth.',
         icon: '🔮',
         category: 'home',
         scaleType: 'diverging',
@@ -65,6 +71,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     homeDaysOnMarket: {
         key: 'homeDaysOnMarket',
         title: 'Days on Market',
+        description: 'Average days from listing to pending (this month).',
         icon: '⏱️',
         category: 'home',
         scaleType: 'sequential',
@@ -75,6 +82,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     rentValue: {
         key: 'rentValue',
         title: 'Monthly Rent',
+        description: 'Typical monthly rent index (ZORI) - smoothed.',
         icon: '💵',
         category: 'investor',
         scaleType: 'diverging',
@@ -85,6 +93,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     rentYoyGrowth: {
         key: 'rentYoyGrowth',
         title: 'Rent Growth (YoY)',
+        description: 'Year-over-year typical rent index growth.',
         icon: '📅',
         category: 'investor',
         scaleType: 'diverging',
@@ -95,6 +104,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     rentFiveYearGrowth: {
         key: 'rentFiveYearGrowth',
         title: 'Rent Growth (5-Year)',
+        description: '5-year cumulative typical rent index growth.',
         icon: '📊',
         category: 'investor',
         scaleType: 'diverging',
@@ -105,6 +115,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     rentMomGrowth: {
         key: 'rentMomGrowth',
         title: 'Rent Growth (MoM)',
+        description: 'Month-over-month typical rent index growth.',
         icon: '📆',
         category: 'investor',
         scaleType: 'diverging',
@@ -115,6 +126,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     rentPerSqft: {
         key: 'rentPerSqft',
         title: 'Rent per Square Foot',
+        description: 'Typical monthly rent normalized per square foot.',
         icon: '📐',
         category: 'investor',
         scaleType: 'diverging',
@@ -125,6 +137,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     activeInventory: {
         key: 'activeInventory',
         title: 'Active Inventory',
+        description: 'Number of active listings at the end of the month.',
         icon: '📦',
         category: 'market',
         scaleType: 'sequential',
@@ -135,6 +148,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     newListings: {
         key: 'newListings',
         title: 'New Listings',
+        description: 'Number of new listings added during the month.',
         icon: '🆕',
         category: 'market',
         scaleType: 'sequential',
@@ -145,6 +159,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     priceCutShare: {
         key: 'priceCutShare',
         title: 'Share of Listings with Price Cuts',
+        description: 'Share of active listings receiving a price cut during the month.',
         icon: '✂️',
         category: 'market',
         scaleType: 'diverging',
@@ -155,6 +170,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     priceCutSize: {
         key: 'priceCutSize',
         title: 'Median Price Cut Size',
+        description: 'Median percentage discount among listings with price cuts.',
         icon: '📉',
         category: 'market',
         scaleType: 'diverging',
@@ -165,6 +181,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     salesCount: {
         key: 'salesCount',
         title: 'Sales Count',
+        description: 'Number of homes sold during the month.',
         icon: '📊',
         category: 'market',
         scaleType: 'sequential',
@@ -175,6 +192,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     medianSalePrice: {
         key: 'medianSalePrice',
         title: 'Median Sale Price',
+        description: 'Median transaction price of homes sold during the month.',
         icon: '💵',
         category: 'market',
         scaleType: 'diverging',
@@ -185,6 +203,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     saleToListRatio: {
         key: 'saleToListRatio',
         title: 'Sale-to-List Ratio',
+        description: 'Median ratio of final sale price to original list price.',
         icon: '⚖️',
         category: 'market',
         scaleType: 'diverging',
@@ -195,6 +214,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     pctSalesAboveList: {
         key: 'pctSalesAboveList',
         title: 'Percent of Sales Above List',
+        description: 'Percentage of homes sold above their initial listing price.',
         icon: '🔺',
         category: 'market',
         scaleType: 'diverging',
@@ -205,6 +225,7 @@ export const METRIC_DEFINITIONS: Record<MetricType, MetricDefinition> = {
     pctSalesBelowList: {
         key: 'pctSalesBelowList',
         title: 'Percent of Sales Below List',
+        description: 'Percentage of homes sold below their initial listing price.',
         icon: '🔻',
         category: 'market',
         scaleType: 'diverging',

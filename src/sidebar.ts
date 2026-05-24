@@ -31,6 +31,7 @@ export class SidebarManager {
 
             const label = document.createElement('label');
             label.className = `metric-option${metricKey === this.activeMetric ? ' active' : ''}`;
+            label.title = def.description;
             
             const input = document.createElement('input');
             input.type = 'radio';
