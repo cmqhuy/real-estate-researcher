@@ -51,8 +51,13 @@ export class SidebarManager {
                 input.checked = true;
             }
 
-            const span = document.createElement('span');
-            span.textContent = ` ${def.icon} ${def.title}`;
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'metric-icon';
+            iconSpan.textContent = def.icon;
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'metric-title';
+            titleSpan.textContent = def.title;
 
             const infoBtn = document.createElement('span');
             infoBtn.className = 'metric-info-btn';
@@ -80,7 +85,8 @@ export class SidebarManager {
             });
 
             label.appendChild(input);
-            label.appendChild(span);
+            label.appendChild(iconSpan);
+            label.appendChild(titleSpan);
             label.appendChild(infoBtn);
             container.appendChild(label);
 

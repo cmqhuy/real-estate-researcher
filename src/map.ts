@@ -2,7 +2,8 @@ import * as L from 'leaflet';
 import { getColor } from './colors';
 import type { MetricType, GeographicLevel } from './colors';
 import { TooltipManager } from './tooltip';
-import { METRIC_DEFINITIONS, getMetricMidpoint, isMetricSupportedAtLevel } from './metrics';
+import { METRIC_DEFINITIONS, getMetricMidpoint, isMetricSupportedAtLevel, formatMetricValue } from './metrics';
+import type { UrlState } from './url';
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -70,6 +71,14 @@ export class MapManager {
     private labelLayer: L.TileLayer;
     private currentTheme: string;
 
+    // Interactive Popups & URL State tracking
+    private layersMap: Map<string, L.Layer> = new Map();
+    private activeSelectedRegionKey: string | null = null;
+    private activePopup: L.Popup | null = null;
+    private pendingSelectedRegionKey: string | null = null;
+    private onMetricChangeCallback: ((metric: MetricType) => void) | null = null;
+    private onRegionSelectCallback: ((key: string | null) => void) | null = null;
+
     private stateNameToCode: Record<string, string> = {
         'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
         'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA',
@@ -84,9 +93,14 @@ export class MapManager {
         'District of Columbia': 'DC'
     };
 
-    constructor(tooltip: TooltipManager, theme: string = 'dark') {
+    constructor(tooltip: TooltipManager, theme: string = 'dark', initialState: UrlState = {}) {
         this.tooltip = tooltip;
         this.currentTheme = theme;
+
+        if (initialState.metric) this.activeMetric = initialState.metric;
+        if (initialState.level) this.activeLevel = initialState.level;
+        if (initialState.state) this.activeState = initialState.state;
+        if (initialState.selected) this.pendingSelectedRegionKey = initialState.selected;
 
         // Explicit canvas renderer with tolerance for better hit detection perf
         this.canvasRenderer = L.canvas({ tolerance: 4 });
@@ -100,6 +114,15 @@ export class MapManager {
 
         // Add zoom control to top right
         L.control.zoom({ position: 'topright' }).addTo(this.map);
+
+        // Wire popup close to clear selected URL parameter
+        this.map.on('popupclose', () => {
+            this.activeSelectedRegionKey = null;
+            this.activePopup = null;
+            if (this.onRegionSelectCallback) {
+                this.onRegionSelectCallback(null);
+            }
+        });
 
         // Create a custom pane for map text labels to overlay on top of choropleth polygons
         const labelPane = this.map.createPane('labels');
@@ -171,18 +194,18 @@ export class MapManager {
             await this.ensureDataLoaded(this.activeState, this.activeLevel, metric);
             this.updateScaleBounds();
             this.applyColorCache();
+            this.updateActivePopup();
         } catch (error) {
             console.error(`Error switching to metric ${metric}:`, error);
         } finally {
             this.setLoading(false);
         }
-    }
-
-    async setLevel(level: GeographicLevel) {
+    }    async setLevel(level: GeographicLevel) {
         if (this.activeLevel === level) return;
         this.activeLevel = level;
 
-        // Clear existing features
+        // Clear existing features and layers map
+        this.layersMap.clear();
         if (this.geoJsonLayer) {
             this.geoJsonLayer.clearLayers();
         }
@@ -225,6 +248,7 @@ export class MapManager {
 
             this.updateScaleBounds();
             this.applyColorCache();
+            this.handlePendingSelection();
         } catch (error) {
             console.error(`Error switching to level ${level}:`, error);
         } finally {
@@ -237,6 +261,7 @@ export class MapManager {
         this.activeState = stateCode;
 
         // Clear existing features so map is empty during flight (smooth transition)
+        this.layersMap.clear();
         if (this.geoJsonLayer) {
             this.geoJsonLayer.clearLayers();
         }
@@ -282,7 +307,7 @@ export class MapManager {
 
             this.updateScaleBounds();
             this.applyColorCache();
-
+            this.handlePendingSelection();
         } catch (error) {
             console.error(`Error switching to state ${stateCode}:`, error);
         } finally {
@@ -382,11 +407,15 @@ export class MapManager {
                 }
             }
 
-            // Load TX if it's supported
-            if (this.manifest?.supportedStates.includes('TX')) {
+            // Load initial state if supported
+            const initialStateCode = this.activeState || 'TX';
+            if (this.manifest?.supportedStates.includes(initialStateCode)) {
                 setTimeout(async () => {
-                    const flight = this.flyTo(31.9686, -99.9018, 6);
-                    await this.loadStateData('TX', flight);
+                    const lat = initialStateCode === 'WA' ? 47.4009 : 31.9686;
+                    const lon = initialStateCode === 'WA' ? -121.4905 : -99.9018;
+                    const zoom = initialStateCode === 'WA' ? 7 : 6;
+                    const flight = this.flyTo(lat, lon, zoom);
+                    await this.loadStateData(initialStateCode, flight);
                 }, 500);
             }
         } catch (error) {
@@ -437,6 +466,7 @@ export class MapManager {
                     this.map.fitBounds(bounds, { padding: [20, 20] });
                 }
             }
+            this.handlePendingSelection();
             
         } catch (error) {
             console.error(`Error loading data for ${stateCode}:`, error);
@@ -644,14 +674,202 @@ export class MapManager {
         };
     }
 
+    onMapMetricChange(callback: (metric: MetricType) => void) {
+        this.onMetricChangeCallback = callback;
+    }
+
+    onRegionSelect(callback: (key: string | null) => void) {
+        this.onRegionSelectCallback = callback;
+    }
+
+    openRegionPopup(key: string, latlng?: L.LatLng) {
+        const layer = this.layersMap.get(key);
+        if (!layer) return;
+
+        this.activeSelectedRegionKey = key;
+        if (this.onRegionSelectCallback) {
+            this.onRegionSelectCallback(key);
+        }
+
+        const popupAnchor = latlng || (layer as any).getBounds().getCenter();
+        const content = this.generatePopupContent(key);
+
+        this.activePopup = L.popup({
+            className: 'custom-map-popup',
+            maxWidth: 320,
+            minWidth: 260
+        })
+        .setLatLng(popupAnchor)
+        .setContent(content);
+
+        this.activePopup.openOn(this.map);
+    }
+
+    updateActivePopup() {
+        if (this.activeSelectedRegionKey && this.activePopup && this.map.hasLayer(this.activePopup)) {
+            const content = this.generatePopupContent(this.activeSelectedRegionKey);
+            this.activePopup.setContent(content);
+        }
+    }
+
+    private formatVersionDate(versionStr: string): string {
+        if (!versionStr || versionStr.length !== 8) return versionStr;
+        const year = versionStr.substring(0, 4);
+        const monthStr = versionStr.substring(4, 6);
+        const dayStr = versionStr.substring(6, 8);
+        
+        const months = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+        const monthIdx = parseInt(monthStr, 10) - 1;
+        if (monthIdx >= 0 && monthIdx < 12) {
+            return `${months[monthIdx]} ${parseInt(dayStr, 10)}, ${year}`;
+        }
+        return `${year}-${monthStr}-${dayStr}`;
+    }
+
+    private generatePopupContent(key: string): HTMLElement {
+        const container = document.createElement('div');
+        container.className = 'map-popup-card';
+
+        const regionsKey = `${this.activeState}_${this.activeLevel}`;
+        const metricsKey = `${this.activeState}_${this.activeLevel}_${this.activeMetric}`;
+        
+        let regionName = 'Unknown Region';
+        let state = '';
+        const namesData = this.regionsCache.get(regionsKey);
+        if (namesData && namesData[key]) {
+            regionName = namesData[key].name;
+            state = namesData[key].state || '';
+        }
+
+        let titleText = '';
+        if (this.activeLevel === 'zip') {
+            titleText = `${key} (${regionName}, ${state})`;
+        } else if (state) {
+            titleText = `${regionName}, ${state}`;
+        } else {
+            titleText = regionName;
+        }
+
+        let val: number | null = null;
+        const isSupported = isMetricSupportedAtLevel(this.activeMetric, this.activeLevel);
+        if (isSupported) {
+            const metricsData = this.metricsCache.get(metricsKey);
+            if (metricsData && metricsData[key] !== undefined) {
+                val = metricsData[key];
+            }
+        }
+
+        const def = METRIC_DEFINITIONS[this.activeMetric];
+        const metricTitle = def ? def.title : 'Metric';
+        
+        let formattedValue = 'N/A';
+        if (isSupported) {
+            formattedValue = formatMetricValue(val, this.activeMetric, false);
+        } else {
+            formattedValue = 'N/A (Not supported at this level)';
+        }
+
+        // Get updated date from manifest metricsVersion
+        let updateDateText = '';
+        if (this.manifest) {
+            const version = this.manifest.metricsVersions[this.activeState];
+            if (version) {
+                updateDateText = `Updated: ${this.formatVersionDate(version)}`;
+            }
+        }
+
+        // Group and order metrics as on the left panel
+        const categories = {
+            home: { label: 'Home Metrics', options: [] as string[] },
+            market: { label: 'Market Metrics', options: [] as string[] },
+            investor: { label: 'Investor Metrics', options: [] as string[] }
+        };
+
+        for (const metricKey in METRIC_DEFINITIONS) {
+            const mKey = metricKey as MetricType;
+            if (isMetricSupportedAtLevel(mKey, this.activeLevel)) {
+                const mDef = METRIC_DEFINITIONS[mKey];
+                const selectedAttr = mKey === this.activeMetric ? 'selected' : '';
+                const optionHtml = `<option value="${mKey}" ${selectedAttr}>${mDef.icon} ${mDef.title}</option>`;
+                categories[mDef.category].options.push(optionHtml);
+            }
+        }
+
+        let optionsHtml = '';
+        for (const catKey in categories) {
+            const cat = categories[catKey as keyof typeof categories];
+            if (cat.options.length > 0) {
+                optionsHtml += `<optgroup label="${cat.label}">
+                    ${cat.options.join('\n')}
+                </optgroup>`;
+            }
+        }
+
+        container.innerHTML = `
+            <div class="map-popup-header">${titleText}</div>
+            <div class="map-popup-body">
+                <div class="map-popup-metric-info">
+                    <span class="map-popup-metric-label">${metricTitle}</span>
+                    <span class="map-popup-metric-value">${formattedValue}</span>
+                    ${updateDateText ? `<span class="map-popup-update-date">${updateDateText}</span>` : ''}
+                </div>
+            </div>
+            <div class="map-popup-selector-container">
+                <label for="popup-metric-select" class="map-popup-select-label">Switch Metric:</label>
+                <select id="popup-metric-select" class="popup-metric-select">
+                    ${optionsHtml}
+                </select>
+            </div>
+        `;
+
+        // Wire dropdown metric selection change listener directly to callback
+        const select = container.querySelector('#popup-metric-select') as HTMLSelectElement;
+        if (select) {
+            select.addEventListener('change', (e) => {
+                const newMetric = (e.target as HTMLSelectElement).value as MetricType;
+                if (this.onMetricChangeCallback) {
+                    this.onMetricChangeCallback(newMetric);
+                }
+            });
+        }
+
+        return container;
+    }
+
+    private handlePendingSelection() {
+        if (this.pendingSelectedRegionKey) {
+            const key = this.pendingSelectedRegionKey;
+            this.pendingSelectedRegionKey = null;
+            
+            setTimeout(() => {
+                const layer = this.layersMap.get(key);
+                if (layer) {
+                    this.openRegionPopup(key);
+                    
+                    const bounds = (layer as any).getBounds();
+                    if (bounds.isValid()) {
+                        this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+                    }
+                }
+            }, 100);
+        }
+    }
+
     private onEachFeature(feature: any, layer: L.Layer) {
+        const key = this.getFeatureKey(feature, this.activeLevel);
+        if (key) {
+            this.layersMap.set(key, layer);
+        }
+
         layer.on({
             mouseover: (e: any) => {
                 const target = e.target as L.Path;
                 target.setStyle({ weight: 2, color: 'white', fillOpacity: 0.8 });
                 target.bringToFront();
 
-                const key = this.getFeatureKey(feature, this.activeLevel);
                 let val: number | null = null;
                 let regionName = 'Unknown Region';
                 let state = '';
@@ -682,6 +900,9 @@ export class MapManager {
                     this.geoJsonLayer.resetStyle(e.target);
                 }
                 this.tooltip.hide();
+            },
+            click: (e: any) => {
+                this.openRegionPopup(key, e.latlng);
             }
         });
     }

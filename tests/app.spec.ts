@@ -159,4 +159,85 @@ test.describe('Real Estate Researcher App', () => {
             await expect(sidebar).not.toHaveClass(/open/);
         });
     });
+
+    test.describe('Interactive Popups & Deep Linking', () => {
+        test('should open popup on click, display correct header, and update URL parameters', async ({ page }) => {
+            await page.goto('./');
+            await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
+            await page.waitForTimeout(1000);
+
+            // Click on the map container (center coordinates) to select a region
+            const mapContainer = page.locator('#map-container');
+            const box = await mapContainer.boundingBox();
+            await mapContainer.click({
+                position: {
+                    x: box ? box.width / 2 : 500,
+                    y: box ? box.height / 2 : 300
+                }
+            });
+
+            // Assert popup is visible
+            const popup = page.locator('.custom-map-popup');
+            await expect(popup).toBeVisible();
+
+            // Assert popup has header and metric value
+            const header = popup.locator('.map-popup-header');
+            await expect(header).not.toBeEmpty();
+            
+            const value = popup.locator('.map-popup-metric-value');
+            await expect(value).not.toBeEmpty();
+
+            // Assert URL parameter 'selected' is updated
+            await expect(page).toHaveURL(/selected=/);
+        });
+
+        test('should switch metric inside popup and synchronize with map, sidebar, and URL', async ({ page }) => {
+            await page.goto('./');
+            await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
+            await page.waitForTimeout(1000);
+
+            // Click to open popup
+            const mapContainer = page.locator('#map-container');
+            const box = await mapContainer.boundingBox();
+            await mapContainer.click({
+                position: {
+                    x: box ? box.width / 2 : 500,
+                    y: box ? box.height / 2 : 300
+                }
+            });
+            const popup = page.locator('.custom-map-popup');
+            await expect(popup).toBeVisible();
+
+            // Get selector and change to rentValue
+            const select = popup.locator('#popup-metric-select');
+            await select.selectOption('rentValue');
+
+            // Assert URL metric is updated
+            await expect(page).toHaveURL(/metric=rentValue/);
+
+            // Assert sidebar metric option is active
+            const rentOptionInput = page.locator('input[value="rentValue"]');
+            await expect(rentOptionInput.locator('..')).toHaveClass(/active/);
+
+            // Assert legend is updated
+            await expect(page.locator('#legend-title')).toHaveText('Monthly Rent');
+        });
+
+        test('should initialize from deep link, zoom to region, and open popup', async ({ page }) => {
+            // Load TX, county level, homeValue metric, selected Harris County (FIPS 48201)
+            await page.goto('./?state=TX&level=county&metric=homeValue&selected=48201');
+            await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
+
+            // Assert state selector is TX
+            await expect(page.locator('#state-select')).toHaveValue('TX');
+
+            // Assert level selector active is county
+            await expect(page.locator('.level-btn[data-level="county"]')).toHaveClass(/active/);
+
+            // Assert popup is visible and displays Harris County
+            const popup = page.locator('.custom-map-popup');
+            await expect(popup).toBeVisible();
+            await expect(popup.locator('.map-popup-header')).toContainText('Harris County');
+        });
+    });
 });
