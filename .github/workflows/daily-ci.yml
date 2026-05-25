@@ -10,7 +10,9 @@ on:
   workflow_dispatch: # Allows manual trigger from GitHub Actions UI
 
 permissions:
-  contents: write # Required to allow deploying to gh-pages branch
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   test:
@@ -48,9 +50,17 @@ jobs:
       - name: Build Application
         run: npm run build
 
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
       - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/main'
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: dist
-          branch: gh-pages
+        id: deployment
+        uses: actions/deploy-pages@v4

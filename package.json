@@ -9,15 +9,12 @@
     "preview": "vite preview",
     "fetch-real-estate-data": "node scripts/fetch_real_estate_data.js",
     "fetch-geo-data": "node scripts/fetch_geo_data.js",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/leaflet": "^1.9.21",
-    "gh-pages": "^6.3.0",
     "happy-dom": "^20.9.0",
     "typescript": "~6.0.2",
     "vite": "^8.0.12",
