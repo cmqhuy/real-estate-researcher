@@ -175,7 +175,7 @@ export class MapManager {
             style: this.getFeatureStyle.bind(this),
             onEachFeature: this.onEachFeature.bind(this),
             smoothFactor: 1.5
-        }).addTo(this.map);
+        } as any).addTo(this.map);
 
         // Load data manifest
         this.initData();
