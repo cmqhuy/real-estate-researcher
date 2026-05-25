@@ -17,10 +17,11 @@ real-estate-researcher/
 │   ├── fetch_real_estate_data.js   # Downloads Zillow CSVs → split regions/metrics JSON files
 │   └── fetch_geo_data.js           # Downloads + filters geodata boundaries per state
 ├── tests/
-│   └── app.spec.ts             # Playwright E2E tests (6 specs × 5 browsers = 30 tests)
+│   └── app.spec.ts             # Playwright E2E tests (9 specs × 5 browsers = 45 tests)
 └── src/
     ├── main.ts         # App entry: wires sidebar, map, level selector, search, legend, theme
-    ├── map.ts          # MapManager: level/metric loading, color rendering, bounds, caching
+    ├── map.ts          # MapManager: level/metric loading, color rendering, bounds, caching, popups
+    ├── url.ts          # URL state management (parsing, history updates) for deep linking
     ├── metrics.ts      # Centralized MetricRegistry: titles, formatters, midpoints, level support
     ├── colors.ts       # Color scale logic, MetricType and GeographicLevel definitions
     ├── legend.ts       # LegendManager: updates labels/title based on active metric
@@ -28,13 +29,13 @@ real-estate-researcher/
     ├── search.ts       # SearchManager: location search, flies map to result
     ├── tooltip.ts      # TooltipManager: hover tooltip formatting per geographic level
     ├── style.css       # All styles (dark/light theme, responsive, level selector)
-    └── *.test.ts       # Unit tests: colors, legend, sidebar, tooltip (17 tests total)
+    └── *.test.ts       # Unit tests: colors, legend, sidebar, tooltip, url (22 tests total)
 ```
 
 ## Key Commands
 - `npm run dev` — Start Vite dev server
-- `npm run test` — 17 unit tests (Vitest)
-- `npm run test:e2e` — 30 E2E tests (Playwright, 5 browsers)
+- `npm run test` — 22 unit tests (Vitest)
+- `npm run test:e2e` — 45 E2E tests (Playwright, 5 browsers)
 - `npm run fetch-real-estate-data` / `npm run fetch-geo-data` — Refresh data from Zillow
 
 ## Detailed Docs (read on demand)

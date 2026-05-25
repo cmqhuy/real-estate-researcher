@@ -164,7 +164,7 @@ test.describe('Real Estate Researcher App', () => {
         test('should open popup on click, display correct header, and update URL parameters', async ({ page }) => {
             await page.goto('./');
             await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(2000);
 
             // Click on the map container (center coordinates) to select a region
             const mapContainer = page.locator('#map-container');
@@ -194,7 +194,7 @@ test.describe('Real Estate Researcher App', () => {
         test('should switch metric inside popup and synchronize with map, sidebar, and URL', async ({ page }) => {
             await page.goto('./');
             await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(2000);
 
             // Click to open popup
             const mapContainer = page.locator('#map-container');

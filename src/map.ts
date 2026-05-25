@@ -76,8 +76,9 @@ export class MapManager {
     private activeSelectedRegionKey: string | null = null;
     private activePopup: L.Popup | null = null;
     private pendingSelectedRegionKey: string | null = null;
-    private onMetricChangeCallback: ((metric: MetricType) => void) | null = null;
+        private onMetricChangeCallback: ((metric: MetricType) => void) | null = null;
     private onRegionSelectCallback: ((key: string | null) => void) | null = null;
+    private isMapMoving = false;
 
     private stateNameToCode: Record<string, string> = {
         'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
@@ -124,6 +125,23 @@ export class MapManager {
             }
         });
 
+        // Suspend hover effects during map movements to improve performance
+        this.map.on('movestart', () => {
+            this.isMapMoving = true;
+            this.tooltip.hide();
+        });
+        
+        this.map.on('moveend', () => {
+            this.isMapMoving = false;
+        });
+
+        // Re-style map on zoomend to dynamically update border strokes
+        this.map.on('zoomend', () => {
+            if (this.geoJsonLayer) {
+                this.geoJsonLayer.setStyle((feature) => this.getFeatureStyle(feature));
+            }
+        });
+
         // Create a custom pane for map text labels to overlay on top of choropleth polygons
         const labelPane = this.map.createPane('labels');
         labelPane.style.zIndex = '650'; // overlayPane (polygons) is 400, popups is 700. Labels sit in between
@@ -155,7 +173,8 @@ export class MapManager {
         
         this.geoJsonLayer = L.geoJSON(undefined, {
             style: this.getFeatureStyle.bind(this),
-            onEachFeature: this.onEachFeature.bind(this)
+            onEachFeature: this.onEachFeature.bind(this),
+            smoothFactor: 1.5
         }).addTo(this.map);
 
         // Load data manifest
@@ -238,12 +257,6 @@ export class MapManager {
 
             if (geodata && this.geoJsonLayer) {
                 this.geoJsonLayer.addData(geodata);
-                
-                // Fit bounds to new features
-                const bounds = this.geoJsonLayer.getBounds();
-                if (bounds.isValid()) {
-                    this.map.fitBounds(bounds, { padding: [20, 20] });
-                }
             }
 
             this.updateScaleBounds();
@@ -665,9 +678,31 @@ export class MapManager {
         const fillColor = hasData ? (this.colorCache.get(key) ?? getColor(val, this.currentMin, this.currentMax, this.activeMetric, this.currentMid)) : 'rgba(0,0,0,0)';
         const borderColor = this.currentTheme === 'light' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)';
 
+        // Optimize border rendering dynamically based on zoom level to reduce Canvas redraw overhead
+        const zoom = this.map ? this.map.getZoom() : 6;
+        let weight = 0.8;
+        let stroke = true;
+
+        if (this.activeLevel === 'zip') {
+            if (zoom <= 7) {
+                stroke = false;
+            } else if (zoom <= 9) {
+                weight = 0.3;
+            } else {
+                weight = 0.6;
+            }
+        } else if (this.activeLevel === 'county' || this.activeLevel === 'metro') {
+            if (zoom <= 5) {
+                weight = 0.3;
+            } else {
+                weight = 0.7;
+            }
+        }
+
         return {
             fillColor,
-            weight: 0.8,
+            stroke,
+            weight,
             opacity: 0.8,
             color: borderColor,
             fillOpacity: hasData ? 0.6 : 0
@@ -866,9 +901,9 @@ export class MapManager {
 
         layer.on({
             mouseover: (e: any) => {
+                if (this.isMapMoving) return;
                 const target = e.target as L.Path;
                 target.setStyle({ weight: 2, color: 'white', fillOpacity: 0.8 });
-                target.bringToFront();
 
                 let val: number | null = null;
                 let regionName = 'Unknown Region';
@@ -896,6 +931,7 @@ export class MapManager {
                 this.tooltip.show(this.activeLevel, key, val, regionName, state, this.activeMetric);
             },
             mouseout: (e: any) => {
+                if (this.isMapMoving) return;
                 if (this.geoJsonLayer) {
                     this.geoJsonLayer.resetStyle(e.target);
                 }
