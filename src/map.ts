@@ -110,7 +110,9 @@ export class MapManager {
             },
             resetLayerStyle: (layer: L.Layer) => {
                 this.layerManager.getGeoJsonLayer().resetStyle(layer);
-            }
+            },
+            getActiveLevel: () => this.activeLevel,
+            getActiveMetric: () => this.activeMetric
         };
 
         this.interactionManager = new InteractionManager(this.mapCore.getLeafletMap(), tooltip, interactionCallbacks);
@@ -189,8 +191,6 @@ export class MapManager {
                     (feature, layer) => this.interactionManager.setupFeatureEvents(
                         layer,
                         feature,
-                        this.activeLevel,
-                        this.activeMetric,
                         () => this.isMapMoving
                     )
                 );
@@ -232,8 +232,6 @@ export class MapManager {
                     (feature, layer) => this.interactionManager.setupFeatureEvents(
                         layer,
                         feature,
-                        this.activeLevel,
-                        this.activeMetric,
                         () => this.isMapMoving
                     )
                 );
@@ -319,8 +317,6 @@ export class MapManager {
                     (feature, layer) => this.interactionManager.setupFeatureEvents(
                         layer,
                         feature,
-                        this.activeLevel,
-                        this.activeMetric,
                         () => this.isMapMoving
                     )
                 );

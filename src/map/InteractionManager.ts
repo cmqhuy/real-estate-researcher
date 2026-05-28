@@ -34,6 +34,8 @@ export class InteractionManager {
         getMetricValue: (key: string) => number | null;
         getUpdateDate: () => string;
         resetLayerStyle: (layer: L.Layer) => void;
+        getActiveLevel: () => GeographicLevel;
+        getActiveMetric: () => MetricType;
     };
 
     constructor(
@@ -47,6 +49,8 @@ export class InteractionManager {
             getMetricValue: (key: string) => number | null;
             getUpdateDate: () => string;
             resetLayerStyle: (layer: L.Layer) => void;
+            getActiveLevel: () => GeographicLevel;
+            getActiveMetric: () => MetricType;
         }
     ) {
         this.map = map;
@@ -57,10 +61,9 @@ export class InteractionManager {
     setupFeatureEvents(
         layer: L.Layer,
         feature: any,
-        activeLevel: GeographicLevel,
-        activeMetric: MetricType,
         isMapMoving: () => boolean
     ): void {
+        const activeLevel = this.callbacks.getActiveLevel();
         const key = this.callbacks.getFeatureKey(feature, activeLevel);
 
         layer.on({
@@ -69,10 +72,12 @@ export class InteractionManager {
                 const target = e.target as L.Path;
                 target.setStyle({ weight: 2, color: 'white', fillOpacity: 0.8 });
 
+                const currentLevel = this.callbacks.getActiveLevel();
+                const currentMetric = this.callbacks.getActiveMetric();
                 const { name: regionName, state } = this.callbacks.getRegionNameAndState(key, feature);
                 const val = this.callbacks.getMetricValue(key);
 
-                this.tooltip.show(activeLevel, key, val, regionName, state, activeMetric);
+                this.tooltip.show(currentLevel, key, val, regionName, state, currentMetric);
             },
             mouseout: (e: any) => {
                 if (isMapMoving()) return;
@@ -80,7 +85,9 @@ export class InteractionManager {
                 this.tooltip.hide();
             },
             click: (e: any) => {
-                this.openPopup(key, layer, e.latlng, activeLevel, activeMetric);
+                const currentLevel = this.callbacks.getActiveLevel();
+                const currentMetric = this.callbacks.getActiveMetric();
+                this.openPopup(key, layer, e.latlng, currentLevel, currentMetric);
             }
         });
     }
@@ -91,7 +98,9 @@ export class InteractionManager {
 
         const feature = (layer as any).feature;
         const popupAnchor = latlng || (layer as any).getBounds().getCenter();
-        const content = this.generatePopupContent(key, activeLevel || 'zip', activeMetric || 'homeValue', feature);
+        const resolvedLevel = activeLevel || this.callbacks.getActiveLevel();
+        const resolvedMetric = activeMetric || this.callbacks.getActiveMetric();
+        const content = this.generatePopupContent(key, resolvedLevel, resolvedMetric, feature);
 
         this.activePopup = L.popup({
             className: 'custom-map-popup',

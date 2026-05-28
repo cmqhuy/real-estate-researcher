@@ -23,7 +23,9 @@ describe('InteractionManager', () => {
                 getRegionNameAndState: () => ({ name: 'Dallas', state: 'TX' }),
                 getMetricValue: () => 350000,
                 getUpdateDate: () => 'Updated: May 25, 2026',
-                resetLayerStyle: () => {}
+                resetLayerStyle: () => {},
+                getActiveLevel: () => 'zip' as const,
+                getActiveMetric: () => 'homeValue' as const
             };
 
             // Instantiate with mocked map and tooltip (since we only test generatePopupContent)
