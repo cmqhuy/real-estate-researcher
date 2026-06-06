@@ -268,7 +268,11 @@ export class MapManager {
             await this.dataLoader.fetchManifest();
             const manifest = this.dataLoader.getManifest();
 
-            const isTest = typeof window !== 'undefined' && (navigator.webdriver || window.location.search.includes('test=true'));
+            const isTest = typeof window !== 'undefined' && (
+                navigator.webdriver || 
+                window.location.search.includes('test=true') ||
+                (window as any).__playwright
+            );
             if (manifest && import.meta.env.DEV && !isTest) {
                 const refreshed = await this.dataLoader.checkAndRefreshOutdatedData(manifest.supportedStates[0] || 'TX');
                 if (refreshed) return;
@@ -276,13 +280,12 @@ export class MapManager {
 
             const initialStateCode = this.activeState || 'TX';
             if (manifest?.supportedStates.includes(initialStateCode)) {
-                setTimeout(async () => {
-                    const lat = initialStateCode === 'WA' ? 47.4009 : 31.9686;
-                    const lon = initialStateCode === 'WA' ? -121.4905 : -99.9018;
-                    const zoom = initialStateCode === 'WA' ? 7 : 6;
-                    const flight = this.mapCore.flyTo(lat, lon, zoom);
-                    await this.loadStateData(initialStateCode, flight);
-                }, 500);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const lat = initialStateCode === 'WA' ? 47.4009 : 31.9686;
+                const lon = initialStateCode === 'WA' ? -121.4905 : -99.9018;
+                const zoom = initialStateCode === 'WA' ? 7 : 6;
+                const flight = this.mapCore.flyTo(lat, lon, zoom);
+                await this.loadStateData(initialStateCode, flight);
             }
         } catch (error) {
             console.error('Failed to load manifest.json:', error);
@@ -472,7 +475,16 @@ export class MapManager {
 
                     const bounds = (layer as any).getBounds();
                     if (bounds.isValid()) {
-                        this.mapCore.getLeafletMap().fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+                        const isTest = typeof window !== 'undefined' && (
+                            navigator.webdriver || 
+                            window.location.search.includes('test=true') ||
+                            (window as any).__playwright
+                        );
+                        this.mapCore.getLeafletMap().fitBounds(bounds, { 
+                            padding: [50, 50], 
+                            maxZoom: 12,
+                            animate: !isTest
+                        });
                     }
                 }
             }, 100);

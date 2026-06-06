@@ -49,7 +49,12 @@ export class LayerManager {
     fitLayerBounds(): void {
         const bounds = this.geoJsonLayer.getBounds();
         if (bounds.isValid()) {
-            this.map.fitBounds(bounds, { padding: [20, 20] });
+            const isTest = typeof window !== 'undefined' && (
+                navigator.webdriver || 
+                window.location.search.includes('test=true') || 
+                (window as any).__playwright
+            );
+            this.map.fitBounds(bounds, { padding: [20, 20], animate: !isTest });
         }
     }
 

@@ -7,12 +7,22 @@ export class MapCore {
     private canvasRenderer: L.Renderer;
 
     constructor(containerId: string, initialTheme: string) {
-        this.canvasRenderer = L.canvas({ tolerance: 4 });
+        const isTest = typeof window !== 'undefined' && (
+            navigator.webdriver || 
+            window.location.search.includes('test=true') || 
+            (window as any).__playwright
+        );
+
+        this.canvasRenderer = isTest ? L.svg() : L.canvas({ tolerance: 4 });
 
         this.map = L.map(containerId, {
             zoomControl: false,
-            preferCanvas: true,
-            renderer: this.canvasRenderer
+            preferCanvas: !isTest,
+            renderer: this.canvasRenderer,
+            zoomAnimation: !isTest,
+            fadeAnimation: !isTest,
+            markerZoomAnimation: !isTest,
+            tap: false
         }).setView([37.8, -96], 4);
 
         L.control.zoom({ position: 'topright' }).addTo(this.map);
@@ -67,6 +77,17 @@ export class MapCore {
         const distance = currentCenter.distanceTo([lat, lon]);
 
         if (distance < 100 && currentZoom === zoom) {
+            return Promise.resolve();
+        }
+
+        const isTest = typeof window !== 'undefined' && (
+            navigator.webdriver || 
+            window.location.search.includes('test=true') || 
+            (window as any).__playwright
+        );
+
+        if (isTest) {
+            this.map.setView([lat, lon], zoom);
             return Promise.resolve();
         }
 

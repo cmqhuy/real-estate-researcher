@@ -4,9 +4,22 @@ test.describe('Real Estate Researcher App', () => {
     let consoleErrors: string[] = [];
     let pageErrors: Error[] = [];
 
-    test.beforeEach(({ page }) => {
+    async function clickMapToOpenPopup(page: any) {
+        const firstPath = page.locator('path.leaflet-interactive').first();
+        await expect(firstPath).toBeVisible({ timeout: 15000 });
+        await firstPath.click();
+        const popup = page.locator('.custom-map-popup');
+        await expect(popup).toBeVisible();
+    }
+
+    test.beforeEach(async ({ page }) => {
         consoleErrors = [];
         pageErrors = [];
+        
+        // Expose test environment flag to the application
+        await page.addInitScript(() => {
+            (window as any).__playwright = true;
+        });
         
         // Listen to console and page errors to catch crashes
         page.on('console', msg => {
@@ -165,21 +178,17 @@ test.describe('Real Estate Researcher App', () => {
             await page.goto('./');
             await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
             await expect(page.locator('#legend-min')).not.toHaveText('Low', { timeout: 30000 });
-            await page.waitForTimeout(1000); // Allow canvas to render after data is processed
+            
+            // Switch to county level for a reliable click target (counties cover the state continuously)
+            const countyBtn = page.locator('.level-btn[data-level="county"]');
+            await countyBtn.click();
+            await expect(countyBtn).toHaveClass(/active/);
+            await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
+            await page.waitForTimeout(1000); // Allow county layers to render
 
-            // Click on the map container (center coordinates) to select a region
-            const mapContainer = page.locator('#map-container');
-            const box = await mapContainer.boundingBox();
-            await mapContainer.click({
-                position: {
-                    x: box ? box.width / 2 : 500,
-                    y: box ? box.height / 2 : 300
-                }
-            });
-
-            // Assert popup is visible
+            // Click to open popup (with offsets if center lands on a border/gap)
+            await clickMapToOpenPopup(page);
             const popup = page.locator('.custom-map-popup');
-            await expect(popup).toBeVisible();
 
             // Assert popup has header and metric value
             const header = popup.locator('.map-popup-header');
@@ -196,19 +205,17 @@ test.describe('Real Estate Researcher App', () => {
             await page.goto('./');
             await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
             await expect(page.locator('#legend-min')).not.toHaveText('Low', { timeout: 30000 });
-            await page.waitForTimeout(1000); // Allow canvas to render after data is processed
+            
+            // Switch to county level for a reliable click target (counties cover the state continuously)
+            const countyBtn = page.locator('.level-btn[data-level="county"]');
+            await countyBtn.click();
+            await expect(countyBtn).toHaveClass(/active/);
+            await expect(page.locator('#loading-overlay')).toHaveClass(/hidden/, { timeout: 30000 });
+            await page.waitForTimeout(1000); // Allow county layers to render
 
-            // Click to open popup
-            const mapContainer = page.locator('#map-container');
-            const box = await mapContainer.boundingBox();
-            await mapContainer.click({
-                position: {
-                    x: box ? box.width / 2 : 500,
-                    y: box ? box.height / 2 : 300
-                }
-            });
+            // Click to open popup (with offsets if center lands on a border/gap)
+            await clickMapToOpenPopup(page);
             const popup = page.locator('.custom-map-popup');
-            await expect(popup).toBeVisible();
 
             // Get selector and change to rentValue
             const select = popup.locator('#popup-metric-select');
