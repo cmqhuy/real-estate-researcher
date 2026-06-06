@@ -7,7 +7,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : 4,
-  reporter: 'list',
+  reporter: process.env.CI ? [['list'], ['github']] : 'list',
   use: {
     baseURL: 'http://localhost:5173/real-estate-researcher/',
     trace: 'on-first-retry',
