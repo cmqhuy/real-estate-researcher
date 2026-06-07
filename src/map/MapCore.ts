@@ -15,7 +15,7 @@ export class MapCore {
 
         this.canvasRenderer = isTest ? L.svg() : L.canvas({ tolerance: 4 });
 
-        this.map = L.map(containerId, {
+        const options: L.MapOptions & { tap?: boolean } = {
             zoomControl: false,
             preferCanvas: !isTest,
             renderer: this.canvasRenderer,
@@ -23,7 +23,9 @@ export class MapCore {
             fadeAnimation: !isTest,
             markerZoomAnimation: !isTest,
             tap: false
-        }).setView([37.8, -96], 4);
+        };
+
+        this.map = L.map(containerId, options).setView([37.8, -96], 4);
 
         L.control.zoom({ position: 'topright' }).addTo(this.map);
 

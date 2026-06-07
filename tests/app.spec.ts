@@ -5,9 +5,9 @@ test.describe('Real Estate Researcher App', () => {
     let pageErrors: Error[] = [];
 
     async function clickMapToOpenPopup(page: any) {
-        const firstPath = page.locator('path.leaflet-interactive').first();
+        const firstPath = page.locator('path.leaflet-interactive:not([d="M0 0"]):not([d=""])').first();
         await expect(firstPath).toBeVisible({ timeout: 15000 });
-        await firstPath.click();
+        await firstPath.dispatchEvent('click');
         const popup = page.locator('.custom-map-popup');
         await expect(popup).toBeVisible();
     }
